@@ -1,0 +1,317 @@
+#!/usr/bin/env ruby
+#
+# Multi-line grep
+#
+# Usage: mlgrep -h
+#        -h:  help
+#
+#        mlgrep [-i] [-c] [-s] [-n|-l] [-q[<len>]] [-{CHJRSA}|-r <pattern> ...] \
+#               [-X] [-x <regexp> ...] [-e] [-w] [-o] [-a] [-N] <regexp> \
+#               [<files ...>]
+#
+#        -a:  use absolute pathnames in printouts of matches
+#        -i:  ignore case
+#        -w:  match whole words only
+#        -e:  exclude self, i.e. don't search in files whose name matches the
+#             regexp we're searching for
+#        -c:  no comments (don't search within C/C++/Java comments)
+#        -s:  no strings (don't search within double quoted strings)
+#        -k:  print statistics about occurrences of the regexp
+#        -n:  line mode (a dot (.) or \s in regexp doesn't match newline and
+#             the whole line where a match was found is printed)
+#        -o:  only match. If the regexp contains a group (a parenthesized
+#             expression), only text matching that group, rather than the
+#             entire regexp, will be printed.
+#        -l:  list (just print names of files where a match was found)
+#        -x <regexp>: exclude files whose names match the regexp
+#        -X:  exclude files according to 'exclude' property in ~/.mlgreprc
+#        -r <pattern>: search in files matching the pattern (e.g. -r "*.skel")
+#             The directory tree starting at current directory is searched.
+#        -C:  equivalent to -r '*.{cc,c}'
+#        -H:  equivalent to -r '*.{hh,h}'
+#        -J:  equivalent to -r '*.java'
+#        -R:  equivalent to -r '*.rb'
+#        -S:  equivalent to -r '*.{cc,hh,c,h,delos,java,rb,ttcn,pl,pm}'
+#        -A:  equivalent to -S -r '*.epct' -r MI_attributes
+#        -q[<len>]: quiet - output first <len> and last <len> chars,
+#                   default is 20
+#        -N:  don't print file names and line numbers
+#
+# While the unix grep is line-based, this command can search over line breaks.
+# Rather than printing lines where a match was found, mlgrep prints the
+# matching part of the file (replacing each sequence of whitespace with a
+# single space). Spaces in the regexp can match any combination of whitespace
+# in the file, and . (dot) matches any character including newline. To match
+# exactly one space, escape it with a backslash or put it inside square
+# brackets. To match any character except newline, use [^\n].
+#
+# Option flags can be compounded. I.e., -ics means -i -c -s.
+#
+# Special regexp functionality:
+# \uX (where X is an optionally backslash-escaped single character or a class
+# of characters within square brackets) matches everything up to the first
+# occurrence of X (\u is for "until"). For example, /\u;/ is replaced by
+# /[^;]*;/ and /\u[123]/ is replaced by /[^123]*[123]/.
+#
+# Pattern options (-r, -C, -H, -J, -S, -A) may be combined with each other and
+# with <files...>.
+#
+# Examples:
+#
+#   Search all source code for single statements inside braces:
+#   > mlgrep -Ssc '[^(]\) \{[^;{}]*; \}'
+#
+#   Search in C++ files  - excluding generated code - for null pointer check
+#   after allocation (which is pointless in Dicos):
+#   > mlgrep -x '/(generated|user|provider)' -CHc \
+#     '(\w+) = (new|\w+ :: construct \()\u; [^}]* if \( \1 == (0|NULL)'
+#
+#   Strip comments from cc files and write them to temporary files:
+#   [sh]$ for i in *.cc; do mlgrep -Nnc . $i > /tmp/$i; done
+#
+# Example of ~/.mlgreprc:
+#   exclude: '/(test|user|generated|provider|included|.deps|delosInfo|obj\.)'
+
+def in_home_dir(rel_path)
+  File.join(ENV['HOME'] || ENV['HOMEDRIVE'], rel_path)
+end
+
+# Path for useful.rb, cplusplus.rb, and maybe rdoc/usage.rb.
+$: << in_home_dir('ruby') << in_home_dir('rb')
+
+require 'useful'     # Regexp#any_white_space, String#match_with_line
+require 'cplusplus2' # String#without{Xml|Cpp}Comments, String#withoutCppStrings
+require 'pathname'
+
+class Doc
+    def self.usage
+        File.open($0).read.each { |line|
+            break if line =~ /^\s*$/
+            puts line.sub(/^# ?/, '') unless line =~ /#!/
+        }
+        exit
+    end
+end
+    
+def short_usage(msg)
+  $stderr << msg << "\n\n" <<
+    # Extract usage information (synopsis) from this file.
+    File.new(__FILE__).read[%r"# *Usage.*?(?=-[^h]:)"m].gsub(/\# ?/, '') <<
+    "\n"
+  exit
+end
+
+module Enumerable
+  # Rejects all elements matching any of the given regexen.
+  def exclude(regexen)
+    reject { |name| regexen.find { |re| name =~ re } }
+  end
+end
+
+def multiline_grep(filename, text, do_strip, re, flags)
+  if flags[:no_comments]
+    text = case filename
+           when /\.xml$/i                        then text.withoutXmlComments
+           when /\.(properties|rb|sh|pm|pl|py)$/ then text.withoutScriptComments
+           else if text =~ /\A#[!\s]/m
+                  text.withoutScriptComments
+                else
+                  text.withoutCppComments
+                end
+           end
+  end
+  text = text.withoutCppStrings if flags[:no_strings]
+
+    text.match_with_line(re, filename, false,
+                         flags[:only_match]) { |match, line_nr|
+    match.gsub!(/\s+/, ' ') if do_strip == :strip
+    q = flags[:quiet]
+    match[q...-q] = ' ... ' if q and match.size > 2*q+5
+    if flags[:statistics]
+      $match_statistics[match] += 1
+      $file_statistics[filename] += 1
+    else
+      yield line_nr, match
+    end
+  }
+end
+
+class String
+  def realpath!
+    replace Pathname.new(self).realpath.to_s
+  rescue Errno::ENOENT => e
+    p e
+  end
+end
+
+def mlgrep_search_files(output, re, names, flags = {})
+  filenames = names.select { |name|
+    File.exist?(name) and File.file?(name)
+  }
+  filenames.each { |filename|
+    text = IO.read filename rescue text = ""
+    filename.realpath! if flags[:absolute_paths]
+
+    multiline_grep filename, text, :strip, re, flags do |line_nr, match|
+      if flags[:list]
+        $stdout << "#{filename}\n"
+        break
+      end
+
+      match = text.to_a[line_nr - 1].strip if flags[:line]
+      output << "#{filename}:#{line_nr}: " unless flags[:no_line_nr]
+      yield filename, line_nr, match if block_given?
+      output << match << "\n"
+    end
+  }
+end
+
+def get_property(name)
+  filename = in_home_dir '.mlgreprc'
+  lines = IO.readlines(filename).grep %r"^#{name}:"
+  case lines.size
+  when 0 then raise "No line starting with #{name}: found in #{filename}"
+  when 1 then lines.first.match(%r"([\"'])(.*)\1")[2]
+  else raise "Multiple entries for property #{name} found in #{filename}"
+  end
+end
+
+SrcExt = get_property 'source' # extensions for files search by -S
+
+def make_regex(re_string, flags)
+  # special regexp \u (until)
+  re_string.gsub!(/\\u\[(.*?[^\\])\]/, '[^\1]*[\1]')
+  re_string.gsub!(/\\u(\\?.)/, '[^\1]*\1')
+
+  # Expressions like [^\n]* are ok in -n mode so we filter out negative REs.
+  if flags[:line] and re_string.gsub(/\[\^.*?[^\\]\]/, '').index('\n')
+    short_usage "Don't use \\n in regexp when in line mode (-n)"
+  end
+
+  re_string = "\\b(?:#{re_string})\\b" if flags[:whole_word]
+  if flags[:line]
+    re_string = '^.*' + re_string + '.*[\n$]'
+    re_flags = 0
+  else
+    re_flags = Regexp::MULTILINE
+  end
+  re_flags |= Regexp::IGNORECASE if flags[:ignore_case]
+
+  Regexp.new(re_string, re_flags).any_white_space
+end
+
+def parse_args(args, patterns, exclude_regexen)
+  simple_flags = {
+    '-a' => :absolute_paths,
+    '-c' => :no_comments,
+    '-e' => :exclude_self,
+    '-h' => :help,
+    '-i' => :ignore_case,
+    '-k' => :statistics,
+    '-l' => :list,
+    '-n' => :line,
+    '-N' => :no_line_nr,
+    '-o' => :only_match,
+    '-s' => :no_strings,
+    '-w' => :whole_word
+  }
+
+  simple_flags_regex = %r"-[#{simple_flags.keys.join.gsub '-', ''}]"
+
+  flags = {}
+  while args.first =~ /^-/
+    if args[0] =~ /-([a-z]{2,})/i
+      # Break up compound flags, e.g., "-nsi" => "-n", "-s", "-i"
+      args[0,1] = $1.split(//).map { |x| "-#{x}" }
+    end
+
+    %w(ln lN lq lo lk).each { |combo|
+      opt = args.grep %r"^-[#{combo}]"
+      short_usage "Can't combine #{opt * ' '}." if opt.size > 1
+    }
+
+    case args.shift
+      # Files to include/exclude
+    when '-C' then patterns << '*.{cc,c}'
+    when '-H' then patterns << '*.{hh,h}'
+    when '-J' then patterns << '*.java'
+    when '-R' then patterns << '*.rb'
+    when '-S' then patterns << "#{SrcExt}"
+    when '-A' then patterns << "{*.{#{SrcExt},epct},MI_attributes}"
+    when '-r' then patterns << args.shift
+    when '-x' then exclude_regexen << Regexp.new(args.shift)
+    when '-X'
+      re = get_property 'exclude'
+      exclude_regexen << Regexp.new(re) unless re.empty?
+      # Flags
+    when simple_flags_regex then flags[simple_flags[$&]] = true
+    when /-q(\d+)?/         then flags[:quiet] = Integer($1 || 20)
+    when /.*/               then short_usage "Unknown flag: #{$&}."
+    end
+  end
+  flags.freeze
+end
+
+def print_statistics(regexp_to_find)
+  [ $file_statistics, $match_statistics ].each { |table|
+    table.sort.each { |key, count| puts "%5d %s" % [count, key] }
+    if table.object_id == $file_statistics.object_id
+      puts "-" * 50
+    else
+      total = table.values.inject(0) { |sum, count| sum + count }
+      printf "%5d TOTAL /%s/\n", total, regexp_to_find.source
+    end
+  }
+end
+
+def mlgrep(*args)
+  patterns, exclude_regexen = [], []
+  $match_statistics = Hash.new 0
+  $file_statistics = Hash.new 0
+  flags = parse_args args, patterns, exclude_regexen
+
+  Doc.usage if flags[:help]
+  short_usage 'No regexp was given.' if args.empty?
+
+  # Work with duplicate of argument in case args are frozen.
+  regexp_to_find = make_regex args.shift.dup, flags
+
+  exclude_regexen << %r"\b#{regexp_to_find.source}\b" if flags[:exclude_self]
+
+  if patterns.any?
+    # Search recursively for files if a pattern option was given.
+    require 'find'
+    Find.find '.' do |f|
+      Find.prune if f =~ /\.snapshot/
+      Find.prune if exclude_regexen.find { |re| f =~ re }
+
+      if File.directory? f
+        f.realpath! if flags[:absolute_paths]
+        files = patterns.map { |p|
+          Dir["#{f}/#{p}"].exclude exclude_regexen
+        }
+        mlgrep_search_files($stdout, regexp_to_find,
+                            files.flatten.uniq, flags)
+      end
+    end
+  elsif args.empty? or args == %w(/dev/null)
+    if exclude_regexen.any?
+      short_usage "Exclusion flag (-x or -X) but no pattern flag " +
+        "(-C,-H,-J,-S,-r) or file list"
+    end
+
+    # If no filenames were given, mlgrep is used in pipe mode. Just print
+    # the match.
+    multiline_grep "STDIN", $stdin.read, :raw, regexp_to_find, flags do
+      |line_nr, match|
+      print match
+    end
+  end
+
+  mlgrep_search_files($stdout, regexp_to_find, args.exclude(exclude_regexen),
+                      flags)
+
+  print_statistics regexp_to_find if flags[:statistics]
+end
+
+mlgrep(*ARGV) if $0 == __FILE__
