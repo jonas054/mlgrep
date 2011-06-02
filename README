@@ -12,14 +12,14 @@ Usage: mlgrep -h
        -w:  match whole words only
        -e:  exclude self, i.e. don't search in files whose name matches the
             regexp we're searching for
-       -c:  no comments (don't search within C/C++/Java comments)
+       -c:  no comments (don't search within C/C++/Java/Ruby comments)
        -s:  no strings (don't search within double quoted strings)
        -k:  print statistics about occurrences of the regexp
        -n:  line mode (a dot (.) or \s in regexp doesn't match newline and
             the whole line where a match was found is printed)
        -o:  only match. If the regexp contains a group (a parenthesized
             expression), only text matching that group, rather than the
-            entire regexp, will be printed.
+            entire regexp match, will be printed.
        -l:  list (just print names of files where a match was found)
        -x <regexp>: exclude files whose names match the regexp
        -X:  exclude files according to 'exclude' property in ~/.mlgreprc
