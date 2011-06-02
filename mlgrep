@@ -76,8 +76,8 @@ def in_home_dir(rel_path)
   File.join(ENV['HOME'] || ENV['HOMEDRIVE'], rel_path)
 end
 
-# Path for useful.rb, cplusplus.rb, and maybe rdoc/usage.rb.
-$: << in_home_dir('ruby') << in_home_dir('rb')
+# Path for useful.rb and cplusplus.rb
+$: << File.dirname(__FILE__)
 
 require 'useful'     # Regexp#any_white_space, String#match_with_line
 require 'cplusplus2' # String#without{Xml|Cpp}Comments, String#withoutCppStrings
