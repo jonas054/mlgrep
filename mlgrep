@@ -7,17 +7,17 @@ end
 # Path for useful.rb and cplusplus.rb
 $: << File.dirname(__FILE__)
 
-require 'useful'     # Regexp#any_white_space, String#match_with_line
-require 'cplusplus2' # String#without{Xml|Cpp}Comments, String#withoutCppStrings
+require 'any_white_space'
+require 'skip_stuff' # String#without{Xml|Cpp}Comments, String#withoutCppStrings
 require 'pathname'
 
 class Doc
-    def self.usage
-        File.open("README").read.each { |line|
-            puts line.sub(/^# ?/, '') unless line =~ /#!/
-        }
-        exit
-    end
+  def self.usage
+    File.open("README").read.each { |line|
+      puts line.sub(/^# ?/, '') unless line =~ /#!/
+    }
+    exit
+  end
 end
     
 def short_usage(msg)
@@ -25,6 +25,45 @@ def short_usage(msg)
     # Extract usage information (synopsis) from this file.
     IO.read("README")[%r"Usage.*?(?=-[^h]:)"m] << "\n"
   exit
+end
+
+class String
+  # Usage: aString.match_with_line(re, file_name) { |match, line| ... }
+  #        aString.match_with_line(re, file_name, true) { |match, line, pos| ... }
+  def match_with_line(re, file_name, include_pos = false, only_match = false)
+    pos = 0
+    proper_name = {
+      'NIL' => 'ASCII-8BIT',
+      'EUC' => 'EUC-JP',
+      'UTF' => 'UTF-8'
+    }
+    loop {
+      raw_text = self[pos..-1]
+      if RUBY_VERSION !~ /\b1\.8/
+        raw_text = raw_text.dup.force_encoding 'ASCII-8BIT'
+      end
+      begin
+        if RUBY_VERSION !~ /\b1\.8/ and raw_text =~ /coding: ([\w-]+)/n
+          self[pos..-1].force_encoding proper_name[$1.upcase] || $1
+          break unless self[pos..-1].valid_encoding?
+        end
+        relpos = self[pos..-1] =~ re or break
+      rescue ArgumentError
+        puts "Warning: #$! in #{file_name}"
+        break
+      end
+      line  = self[0..pos+relpos].count("\n") + 1
+      match = only_match ? "#$1 #$2 #$3 #$4 #$5 #$6 #$7 #$8 #$9".strip || $& : $&
+      if $&.empty?
+        pos += 1 # avoid infinite loop
+      else
+        args = [match, line]
+        args << (pos + relpos) if include_pos
+        yield(*args) if block_given?
+        pos += relpos + $&.length
+      end
+    }
+  end
 end
 
 module Enumerable
