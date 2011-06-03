@@ -87,8 +87,8 @@ def multiline_grep(filename, text, do_strip, re, flags)
   end
   text = text.withoutCppStrings if flags[:no_strings]
 
-    text.match_with_line(re, filename, false,
-                         flags[:only_match]) { |match, line_nr|
+  text.match_with_line(re, filename, false,
+                       flags[:only_match]) { |match, line_nr|
     match.gsub!(/\s+/, ' ') if do_strip == :strip
     q = flags[:quiet]
     match[q...-q] = ' ... ' if q and match.size > 2*q+5
