@@ -3,7 +3,7 @@ Multi-line grep
 Usage: mlgrep -h
        -h:  help
 
-       mlgrep [-i] [-c] [-s] [-n|-l] [-q[<len>]] [-{CHJRSA}|-r <pattern> ...] \
+       mlgrep [-i] [-c] [-s] [-n|-l] [-q[<len>]] [-{CHJRS}|-r <pattern> ...] \
               [-X] [-x <regexp> ...] [-e] [-w] [-o] [-a] [-N] <regexp> \
               [<files ...>]
 
