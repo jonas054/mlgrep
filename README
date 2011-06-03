@@ -30,7 +30,6 @@ Usage: mlgrep -h
        -J:  equivalent to -r '*.java'
        -R:  equivalent to -r '*.rb'
        -S:  equivalent to -r '*.{cc,hh,c,h,delos,java,rb,ttcn,pl,pm}'
-       -A:  equivalent to -S -r '*.epct' -r MI_attributes
        -q[<len>]: quiet - output first <len> and last <len> chars,
                   default is 20
        -N:  don't print file names and line numbers
@@ -51,7 +50,7 @@ of characters within square brackets) matches everything up to the first
 occurrence of X (\u is for "until"). For example, /\u;/ is replaced by
 /[^;]*;/ and /\u[123]/ is replaced by /[^123]*[123]/.
 
-Pattern options (-r, -C, -H, -J, -S, -A) may be combined with each other and
+Pattern options (-r, -C, -H, -J, -S) may be combined with each other and
 with <files...>.
 
 Examples:
