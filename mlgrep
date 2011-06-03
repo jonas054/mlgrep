@@ -202,7 +202,6 @@ def parse_args(args, patterns, exclude_regexen)
     when '-J' then patterns << '*.java'
     when '-R' then patterns << '*.rb'
     when '-S' then patterns << "#{SrcExt}"
-    when '-A' then patterns << "{*.{#{SrcExt},epct},MI_attributes}"
     when '-r' then patterns << args.shift
     when '-x' then exclude_regexen << Regexp.new(args.shift)
     when '-X'
