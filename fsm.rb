@@ -108,7 +108,7 @@ class FSM
 
     # Creates an instance of the Either class. It takes two or more states as
     # arguments.
-    def self.either(*args) Either.new *args end
+    def self.either(*args) Either.new(*args) end
 
     # Adds a state/event transition (a rule). If no block is given, the default
     # action will be used. If no _newState_ is given, the FSM will remain in

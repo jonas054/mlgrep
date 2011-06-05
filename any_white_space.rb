@@ -45,7 +45,7 @@ if $0 == __FILE__
                          /abc/mi.aws.options)
 
             # Check that we cache the result in Regexp#aws
-            assert_equal /a b/.aws.object_id, /a b/.aws.object_id
+            assert_equal(/a b/.aws.object_id, /a b/.aws.object_id)
         end
     end
 end  
