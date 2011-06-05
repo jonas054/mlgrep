@@ -4,8 +4,10 @@ def in_home_dir(rel_path)
   File.join(ENV['HOME'] || ENV['HOMEDRIVE'], rel_path)
 end
 
+require 'pathname'
+
 # Path for useful.rb and cplusplus.rb
-$: << File.dirname(__FILE__)
+$: << File.dirname(Pathname.new(__FILE__).realpath)
 
 require 'any_white_space'
 require 'skip_stuff' # String#without{Xml|Cpp}Comments, String#withoutCppStrings
@@ -16,7 +18,7 @@ class Doc
     File.open("README").read.each { |line|
       puts line.sub(/^# ?/, '') unless line =~ /#!/
     }
-    exit
+    throw :exit
   end
 end
     
@@ -24,7 +26,7 @@ def short_usage(msg)
   $stderr << msg << "\n\n" <<
     # Extract usage information (synopsis) from this file.
     IO.read("README")[%r"Usage.*?(?=-[^h]:)"m] << "\n"
-  exit
+  throw :exit
 end
 
 class String
@@ -123,7 +125,7 @@ def mlgrep_search_files(output, re, names, flags = {})
         break
       end
 
-      match = text.to_a[line_nr - 1].strip if flags[:line]
+      match = text.split(/\n/)[line_nr - 1].strip if flags[:line]
       output << "#{filename}:#{line_nr}: " unless flags[:no_line_nr]
       yield filename, line_nr, match if block_given?
       output << match << "\n"
@@ -229,53 +231,55 @@ def print_statistics(regexp_to_find)
 end
 
 def mlgrep(*args)
-  patterns, exclude_regexen = [], []
-  $match_statistics = Hash.new 0
-  $file_statistics = Hash.new 0
-  flags = parse_args args, patterns, exclude_regexen
+  catch(:exit) {
+    patterns, exclude_regexen = [], []
+    $match_statistics = Hash.new 0
+    $file_statistics = Hash.new 0
+    flags = parse_args args, patterns, exclude_regexen
 
-  Doc.usage if flags[:help]
-  short_usage 'No regexp was given.' if args.empty?
+    Doc.usage if flags[:help]
+    short_usage 'No regexp was given.' if args.empty?
 
-  # Work with duplicate of argument in case args are frozen.
-  regexp_to_find = make_regex args.shift.dup, flags
+    # Work with duplicate of argument in case args are frozen.
+    regexp_to_find = make_regex args.shift.dup, flags
 
-  exclude_regexen << %r"\b#{regexp_to_find.source}\b" if flags[:exclude_self]
+    exclude_regexen << %r"\b#{regexp_to_find.source}\b" if flags[:exclude_self]
 
-  if patterns.any?
-    # Search recursively for files if a pattern option was given.
-    require 'find'
-    Find.find '.' do |f|
-      Find.prune if f =~ /\.snapshot/
-      Find.prune if exclude_regexen.find { |re| f =~ re }
+    if patterns.any?
+      # Search recursively for files if a pattern option was given.
+      require 'find'
+      Find.find '.' do |f|
+        Find.prune if f =~ /\.snapshot/
+        Find.prune if exclude_regexen.find { |re| f =~ re }
 
-      if File.directory? f
-        f.realpath! if flags[:absolute_paths]
-        files = patterns.map { |p|
-          Dir["#{f}/#{p}"].exclude exclude_regexen
-        }
-        mlgrep_search_files($stdout, regexp_to_find,
-                            files.flatten.uniq, flags)
+        if File.directory? f
+          f.realpath! if flags[:absolute_paths]
+          files = patterns.map { |p|
+            Dir["#{f}/#{p}"].exclude exclude_regexen
+          }
+          mlgrep_search_files($stdout, regexp_to_find,
+                              files.flatten.uniq, flags)
+        end
+      end
+    elsif args.empty? or args == %w(/dev/null)
+      if exclude_regexen.any?
+        short_usage "Exclusion flag (-x or -X) but no pattern flag " +
+          "(-C,-H,-J,-S,-r) or file list"
+      end
+
+      # If no filenames were given, mlgrep is used in pipe mode. Just print
+      # the match.
+      multiline_grep "STDIN", $stdin.read, :raw, regexp_to_find, flags do
+        |line_nr, match|
+        print match
       end
     end
-  elsif args.empty? or args == %w(/dev/null)
-    if exclude_regexen.any?
-      short_usage "Exclusion flag (-x or -X) but no pattern flag " +
-        "(-C,-H,-J,-S,-r) or file list"
-    end
 
-    # If no filenames were given, mlgrep is used in pipe mode. Just print
-    # the match.
-    multiline_grep "STDIN", $stdin.read, :raw, regexp_to_find, flags do
-      |line_nr, match|
-      print match
-    end
-  end
+    mlgrep_search_files($stdout, regexp_to_find, args.exclude(exclude_regexen),
+                        flags)
 
-  mlgrep_search_files($stdout, regexp_to_find, args.exclude(exclude_regexen),
-                      flags)
-
-  print_statistics regexp_to_find if flags[:statistics]
+    print_statistics regexp_to_find if flags[:statistics]
+  }
 end
 
 mlgrep(*ARGV) if $0 == __FILE__
