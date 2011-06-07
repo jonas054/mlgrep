@@ -1,5 +1,5 @@
 def add_if_present(version)
-  `which #{version}`
+  `which #{version} 2>&1`
   $rubies << "#{version}" if $? == 0
 end
 
