@@ -174,7 +174,8 @@ def make_regex(re_string, flags)
   Regexp.new(re_string, re_flags).any_white_space
 end
 
-def parse_args(args, patterns, exclude_regexen)
+def parse_args(args)
+  patterns, exclude_regexen = [], []
   simple_flags = {
     '-a' => :absolute_paths,
     '-c' => :no_comments,
@@ -193,12 +194,18 @@ def parse_args(args, patterns, exclude_regexen)
   simple_flags_regex = %r"-[#{simple_flags.keys.join.gsub '-', ''}]"
 
   flags = {}
-  while args.first =~ /^-/
-    if args[0] =~ /-([a-z]{2,})/i
+  normalized_args = args.map { |arg|
+    if arg =~ /^-([a-z]{2,})$/i
       # Break up compound flags, e.g., "-nsi" => "-n", "-s", "-i"
-      args[0,1] = $1.split(//).map { |x| "-#{x}" }
+      $1.split(//).map { |x| "-#{x}" }
+    else
+      arg
     end
+  }.flatten
 
+  args = normalized_args.dup
+
+  while args.first =~ /^-/
     %w(ln lN lq lo lk).each { |combo|
       opt = args.grep %r"^-[#{combo}]"
       short_usage "Can't combine #{opt * ' '}." if opt.size > 1
@@ -225,7 +232,12 @@ def parse_args(args, patterns, exclude_regexen)
     when /.*/               then short_usage "Unknown flag: #{$&}."
     end
   end
+  flags_in_args = args.grep(/^-/)
+  if flags_in_args.any?
+    short_usage "Flag #{flags_in_args.first} encountered after regexp"
+  end
   flags.freeze
+  [args, normalized_args.grep(/^-/), flags, patterns, exclude_regexen]
 end
 
 def print_statistics(regexp_to_find)
@@ -245,8 +257,8 @@ def mlgrep(*args)
     patterns, exclude_regexen = [], []
     $match_statistics = Hash.new 0
     $file_statistics = Hash.new 0
-    flags = parse_args args, patterns, exclude_regexen
-
+    args, normalized_args, flags, patterns, exclude_regexen = parse_args args
+   
     Doc.usage if flags[:help]
     short_usage 'No regexp was given.' if args.empty?
 
@@ -254,7 +266,13 @@ def mlgrep(*args)
     regexp_to_find = make_regex args.shift.dup, flags
 
     exclude_regexen << %r"\b#{regexp_to_find.source}\b" if flags[:exclude_self]
-
+   
+    args = args.exclude(exclude_regexen)
+    files = args.select { |e| File.file?(e) }
+    if files.any?
+      mlgrep_search_files($stdout, regexp_to_find, files.flatten.uniq, flags)
+    end
+   
     if patterns.any?
       # Search recursively for files if a pattern option was given.
       require 'find'
