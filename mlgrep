@@ -78,8 +78,10 @@ end
 def multiline_grep(filename, text, do_strip, re, flags)
   if flags[:no_comments]
     text = case filename
-           when /\.xml$/i                        then text.withoutXmlComments
-           when /\.(properties|rb|sh|pm|pl|py)$/ then text.withoutScriptComments
+           when /\.xml$/i
+             text.withoutXmlComments
+           when /\.(properties|rb|sh|pm|pl|py|cmake|mak)$/, /CMakeLists.txt/
+             text.withoutScriptComments
            else if text =~ /\A#[!\s]/m
                   text.withoutScriptComments
                 else
@@ -87,7 +89,12 @@ def multiline_grep(filename, text, do_strip, re, flags)
                 end
            end
   end
-  text = text.withoutCppStrings if flags[:no_strings]
+  if flags[:no_strings]
+    text = text.withoutCppStrings
+    if filename =~ /\.py$/ || text =~ /\A#.*ython/
+      text = text.withoutPythonStrings
+    end
+  end
 
   text.match_with_line(re, filename, false,
                        flags[:only_match]) { |match, line_nr|
@@ -199,11 +206,14 @@ def parse_args(args, patterns, exclude_regexen)
 
     case args.shift
       # Files to include/exclude
-    when '-C' then patterns << '*.{cc,c}'
-    when '-H' then patterns << '*.{hh,h}'
+    when '-C' then patterns << '*.{cc,c,cpp}'
+    when '-H' then patterns << '*.{hh,h,hpp}'
     when '-J' then patterns << '*.java'
+    when '-L' then patterns << '*.{pl,PL,pm,pod,t}'
+    when '-M' then patterns << '{*.cmake,CMakeLists.txt}'
+    when '-P' then patterns << '*.{py}'
     when '-R' then patterns << '*.rb'
-    when '-S' then patterns << "#{SrcExt}"
+    when '-S' then patterns << SourcePattern
     when '-r' then patterns << args.shift
     when '-x' then exclude_regexen << Regexp.new(args.shift)
     when '-X'

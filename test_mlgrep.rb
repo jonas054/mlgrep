@@ -105,16 +105,16 @@ class TestMlgrep < Test::Unit::TestCase
   
   def test_line_mode
     mlgrep(*%w'withoutXmlComments skip_stuff.rb')
-    check_stdout "skip_stuff.rb:7: withoutXmlComments"
+    check_stdout "skip_stuff.rb:9: withoutXmlComments"
 
     mlgrep(*%w'-n withoutXmlComments skip_stuff.rb')
-    check_stdout "skip_stuff.rb:7: def withoutXmlComments"
+    check_stdout "skip_stuff.rb:9: def withoutXmlComments"
   end
 
 
   def test_only_group_match
     mlgrep(*%w'-o without(X..)Comments skip_stuff.rb')
-    check_stdout "skip_stuff.rb:7: Xml"
+    check_stdout "skip_stuff.rb:9: Xml"
   end
   
   def test_statistics

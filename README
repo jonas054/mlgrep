@@ -3,7 +3,7 @@ Multi-line grep
 Usage: mlgrep -h
        -h:  help
 
-       mlgrep [-i] [-c] [-s] [-n|-l] [-q[<len>]] [-{CHJRS}|-r <pattern> ...] \
+       mlgrep [-i] [-c] [-s] [-n|-l] [-q[<len>]] [-{CHJLMPRS}|-r <pattern> ...] \
               [-X] [-x <regexp> ...] [-e] [-w] [-o] [-a] [-N] <regexp> \
               [<files ...>]
 
@@ -28,8 +28,11 @@ Usage: mlgrep -h
        -C:  equivalent to -r '*.{cc,c}'
        -H:  equivalent to -r '*.{hh,h}'
        -J:  equivalent to -r '*.java'
+       -L:  equivalent to -r '*.{pl,PL,pm,pod,t}'
+       -M:  equivalent to -r '{*.cmake,CMakeLists.txt}'
+       -P:  equivalent to -r '*.{py}'
        -R:  equivalent to -r '*.rb'
-       -S:  equivalent to -r '*.{cc,hh,c,h,delos,java,rb,ttcn,pl,pm}'
+       -S:  equivalent to -r <'source' pattern defined in ~/.mlgreprc>
        -q[<len>]: quiet - output first <len> and last <len> chars,
                   default is 20
        -N:  don't print file names and line numbers
@@ -50,8 +53,8 @@ of characters within square brackets) matches everything up to the first
 occurrence of X (\u is for "until"). For example, /\u;/ is replaced by
 /[^;]*;/ and /\u[123]/ is replaced by /[^123]*[123]/.
 
-Pattern options (-r, -C, -H, -J, -S) may be combined with each other and
-with <files...>.
+Pattern options (-r, -C, -H, -J, -L, -M, -P, -S) may be combined with each
+other and with <files...>.
 
 Examples:
 

@@ -2,6 +2,8 @@ class String
     CPP_RE =
         %r'"(?:\\.|[^\\"])*"|\'.*?[^\\]?\'|//[^\n]*|/\*(?m:.*?)\*/|[^"\'/]+|.'
 
+    PYTHON_RE = /['"]{3}.*?['"]{3}|'[^']*'|\s+|[^"'\s]*|./m
+
     # Returns a string that is the same as the original, except that all
     # angle-bracket-exclamaton-point comments are removed. Newlines are preserved.
     def withoutXmlComments
@@ -34,6 +36,11 @@ class String
         end
     end
 
+    def withoutPythonStrings
+        replaceStuff PYTHON_RE, /\A["'].*/ do |x|
+            ''
+        end
+    end
     private
 
     def replaceStuff(scan_re, repl_re)
