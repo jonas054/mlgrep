@@ -64,6 +64,12 @@ class String
     }
   end
 
+  def realpath
+    Pathname.new(self).realpath.to_s
+  rescue Errno::ENOENT => e
+    p e
+  end
+
   # Dummy implementations of string encoding methods for ruby 1.8.
   unless "".respond_to? :force_encoding
     def force_encoding(name) self end
@@ -111,14 +117,6 @@ def multiline_grep(filename, text, do_strip, re, flags)
       yield line_nr, match
     end
   }
-end
-
-class String
-  def realpath
-    Pathname.new(self).realpath.to_s
-  rescue Errno::ENOENT => e
-    p e
-  end
 end
 
 def mlgrep_search_files(output, re, names, flags = {})
