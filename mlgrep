@@ -143,12 +143,19 @@ end
 
 def get_property(name)
   filename = in_home_dir '.mlgreprc'
+  create_default_mlgreprc unless File.exist? filename
   lines = IO.readlines(filename).grep %r"^#{name}:"
   case lines.size
   when 0 then raise "No line starting with #{name}: found in #{filename}"
   when 1 then lines.first.match(%r"([\"'])(.*)\1")[2]
   else raise "Multiple entries for property #{name} found in #{filename}"
   end
+end
+
+def create_default_mlgreprc
+    File.open(in_home_dir('.mlgreprc'), 'w') { |f|
+        f.puts "source: '{*.{cc,c,cpp},*.{hh,h,hpp},*.java,*.{pl,PL,pm,pod,t},{*.cmake,CMakeLists.txt},*.{py},*.rb}'"
+    }
 end
 
 SourcePattern = get_property 'source' # files search by -S
