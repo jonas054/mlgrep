@@ -31,7 +31,7 @@ class TestMlgrep < Test::Unit::TestCase
     assert $stdout.string =~ %r'^/'
     $stdout.string = ''
   end
-  
+
   def test_case_insensitive
     mlgrep(*%w'either fsm.rb')
     check_stdout("fsm.rb:63: either",
@@ -47,7 +47,7 @@ class TestMlgrep < Test::Unit::TestCase
                  "fsm.rb:111: Either",
                  "fsm.rb:142: Either")
   end
-  
+ 
   def test_searching_one_file_for_regex
     mlgrep(*%w'\$\w+ fsm.rb')
     check_stdout("fsm.rb:138: $stderr",
@@ -65,14 +65,14 @@ class TestMlgrep < Test::Unit::TestCase
                  "fsm.rb:149: default",
                  "fsm.rb:150: default",
                  "fsm.rb:154: default")
-    
+
     mlgrep(*%w'-w default fsm.rb')
     check_stdout("fsm.rb:96: default",
                  "fsm.rb:113: default",
                  "fsm.rb:149: default",
                  "fsm.rb:150: default")
   end
-  
+
   def test_exclude_self
     mlgrep(*%w'-R -l fsm')
     check_stdout("./test_mlgrep.rb",
@@ -80,7 +80,7 @@ class TestMlgrep < Test::Unit::TestCase
                  "./any_white_space.rb",
                  "./test_fsm.rb",
                  "./fsm.rb")
-    
+
     # fsm.rb is ecluded but not test_fsm.rb.
     mlgrep(*%w'-Re -l fsm')
     check_stdout("./test_mlgrep.rb",
@@ -88,7 +88,7 @@ class TestMlgrep < Test::Unit::TestCase
                  "./any_white_space.rb",
                  "./test_fsm.rb")
   end
-  
+
   def test_searching_two_files_for_regex
     mlgrep(*%w'\$\w+ fsm.rb any_white_space.rb')
     check_stdout("fsm.rb:138: $stderr",
@@ -102,7 +102,7 @@ class TestMlgrep < Test::Unit::TestCase
                  "./fsm.rb:138: $stderr",
                  "./fsm.rb:138: $DEBUG")
   end
-  
+
   def test_line_mode
     mlgrep(*%w'withoutXmlComments skip_stuff.rb')
     check_stdout "skip_stuff.rb:7: withoutXmlComments"
@@ -116,7 +116,7 @@ class TestMlgrep < Test::Unit::TestCase
     mlgrep(*%w'-o without(X..)Comments skip_stuff.rb')
     check_stdout "skip_stuff.rb:7: Xml"
   end
-  
+
   def test_statistics
     mlgrep(*%w'-k F.. fsm.rb')
     check_stdout("   26 fsm.rb",
@@ -145,7 +145,7 @@ class TestMlgrep < Test::Unit::TestCase
                  "fsm.rb:54: name",
                  "fsm.rb:62: name",
                  "fsm.rb:71: name")
-    
+
     mlgrep(*%w'-s name fsm.rb')
     check_stdout("fsm.rb:8: name",
                  "fsm.rb:11: name",
