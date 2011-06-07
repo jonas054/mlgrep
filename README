@@ -25,15 +25,15 @@ Usage: mlgrep -h
        -X:  exclude files according to 'exclude' property in ~/.mlgreprc
        -r <pattern>: search in files matching the pattern (e.g. -r "*.skel")
             The directory tree starting at current directory is searched.
-       -C:  equivalent to -r '*.{cc,c}'
-       -H:  equivalent to -r '*.{hh,h}'
-       -J:  equivalent to -r '*.java'
-       -L:  equivalent to -r '*.{pl,PL,pm,pod,t}'
-       -M:  equivalent to -r '{*.cmake,CMakeLists.txt}'
-       -P:  equivalent to -r '*.{py}'
-       -R:  equivalent to -r '*.rb'
+       -C:  equivalent to -r '*.{cc,c}'                 (C, C++)
+       -H:  equivalent to -r '*.{hh,h}'                 (C/C++ headers)
+       -J:  equivalent to -r '*.java'                   (Java)
+       -L:  equivalent to -r '*.{pl,PL,pm,pod,t}'       (Perl)
+       -M:  equivalent to -r '{*.cmake,CMakeLists.txt}' (CMake)
+       -P:  equivalent to -r '*.py'                     (Python)
+       -R:  equivalent to -r '*.rb'                     (Ruby)
        -S:  equivalent to -r <'source' pattern defined in ~/.mlgreprc>
-       -q[<len>]: quiet - output first <len> and last <len> chars,
+       -q[<len>]: quiet - output first <len> and last <len> characters,
                   default is 20
        -N:  don't print file names and line numbers
 
