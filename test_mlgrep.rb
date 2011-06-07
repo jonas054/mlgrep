@@ -76,15 +76,15 @@ class TestMlgrep < Test::Unit::TestCase
   def test_exclude_self
     mlgrep(*%w'-R -l fsm')
     check_stdout("./test_mlgrep.rb",
-                 "./ts_mlgrep.rb",
                  "./any_white_space.rb",
+                 "./mlgrep",
                  "./test_fsm.rb",
                  "./fsm.rb")
     
     # fsm.rb is ecluded but not test_fsm.rb.
     mlgrep(*%w'-Re -l fsm')
     check_stdout("./test_mlgrep.rb",
-                 "./ts_mlgrep.rb",
+                 "./mlgrep",
                  "./any_white_space.rb",
                  "./test_fsm.rb")
   end
@@ -97,10 +97,10 @@ class TestMlgrep < Test::Unit::TestCase
   end
 
   def test_searching_all_ruby_files_for_regex_excluding_test_files
-    mlgrep(*%w'-x test_ -R \$\S+')
+    mlgrep(*%w'-x test_ -r *.rb \$\S+')
     check_stdout("./any_white_space.rb:36: $0",
-                 "./fsm.rb:138: $stderr",
-                 "./fsm.rb:138: $DEBUG")
+                 "./fsm.rb:138: $DEBUG",
+                 "./fsm.rb:138: $stderr")
   end
   
   def test_line_mode

@@ -258,23 +258,30 @@ def mlgrep(*args)
     if patterns.any?
       # Search recursively for files if a pattern option was given.
       require 'find'
-      Find.find '.' do |f|
-        Find.prune if f =~ /\.snapshot/
-        Find.prune if exclude_regexen.find { |re| f =~ re }
-
-        if File.directory? f
-          f.realpath! if flags[:absolute_paths]
-          files = patterns.map { |p|
-            Dir["#{f}/#{p}"].exclude exclude_regexen
-          }
-          mlgrep_search_files($stdout, regexp_to_find,
-                              files.flatten.uniq, flags)
+      dirs_to_search = args.select { |e|
+        File.directory?(e)
+      }
+      dirs_to_search = ['.'] if dirs_to_search.empty?
+      dirs_to_search.each { |dir|
+        Find.find dir do |f|
+          Find.prune if f =~ /\.snapshot/ or f =~ /~$/
+          Find.prune if exclude_regexen.find { |re| f =~ re }
+   
+          if File.directory? f and not File.symlink? f
+            f = f.realpath if flags[:absolute_paths]
+            files = patterns.map { |p|
+              Dir[File.join(f,p)].exclude exclude_regexen
+            }
+            files << hashbang_matches(normalized_args, f)
+            mlgrep_search_files($stdout, regexp_to_find, files.flatten.uniq,
+                                flags)
+          end
         end
-      end
-    elsif args.empty? or args == %w(/dev/null)
+      }
+    elsif args.empty? or args == ['/dev/null']
       if exclude_regexen.any?
         short_usage "Exclusion flag (-x or -X) but no pattern flag " +
-          "(-C,-H,-J,-S,-r) or file list"
+          "(-C,-H,-J,-L,-M,-P,-S,-r) or file list"
       end
 
       # If no filenames were given, mlgrep is used in pipe mode. Just print
@@ -290,6 +297,45 @@ def mlgrep(*args)
 
     print_statistics regexp_to_find if flags[:statistics]
   }
+end
+
+def hashbang_matches(normalized_args, dir)
+  interpreters = {
+    '-P' => /python/i,
+    '-R' => /ruby/i,
+    '-L' => /perl/i,
+    '-S' => %r'perl|python|ruby|/(ba)?sh'i
+  }
+  matches = []
+  suffixless = Dir["#{dir}/*"] - Dir["#{dir}/*.*"]
+  suffixless.each { |s|
+    File.open_with_error_handling(s) { |f|
+      text = if RUBY_VERSION !~ /\b1\.8/
+               f.readline.force_encoding 'ASCII-8BIT'
+             else
+               f.readline
+             end
+      if not f.eof? and text =~ /^#!.*/
+        line1 = $&
+        normalized_args.each { |arg|
+          matches << s if line1 =~ interpreters[arg]
+        }
+      end
+    }
+  }
+  matches
+end
+
+class File
+  def self.open_with_error_handling(name)
+    if file? name and readable? name and not symlink? name and name !~ /~$/
+      begin
+        open(name) { |f| yield f }
+      rescue Errno::ENXIO => e
+        $stdout.puts "mlgrep: #{e}"
+      end
+    end
+  end
 end
 
 mlgrep(*ARGV) if $0 == __FILE__
