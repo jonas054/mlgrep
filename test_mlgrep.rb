@@ -22,6 +22,12 @@ class TestMlgrep < Test::Unit::TestCase
     $stderr.string = ''
   end
 
+  def test_help
+    mlgrep '-h'
+    assert $stdout.string =~ /Option flags can be compounded. I.e., -ics means -i -c -s./
+    $stdout.string = ''
+  end
+
   def test_searching_one_file_for_string
     mlgrep 'class FSM', 'fsm.rb'
     check_stdout "fsm.rb:86: class FSM"
