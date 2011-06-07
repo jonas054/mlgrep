@@ -77,7 +77,6 @@ class TestMlgrep < Test::Unit::TestCase
   def test_exclude_self
     mlgrep(*%w'-R -l fsm')
     check_stdout("./test_mlgrep.rb",
-                 "./ts_mlgrep.rb",
                  "./any_white_space.rb",
                  "./test_fsm.rb",
                  "./fsm.rb")
@@ -85,7 +84,6 @@ class TestMlgrep < Test::Unit::TestCase
     # fsm.rb is ecluded but not test_fsm.rb.
     mlgrep(*%w'-Re -l fsm')
     check_stdout("./test_mlgrep.rb",
-                 "./ts_mlgrep.rb",
                  "./any_white_space.rb",
                  "./test_fsm.rb")
   end
