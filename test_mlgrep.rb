@@ -84,12 +84,14 @@ class TestMlgrep < Test::Unit::TestCase
     mlgrep(*%w'-R -l fsm')
     check_stdout("./test_mlgrep.rb",
                  "./any_white_space.rb",
+                 "./mlgrep",
                  "./test_fsm.rb",
                  "./fsm.rb")
 
     # fsm.rb is ecluded but not test_fsm.rb.
     mlgrep(*%w'-Re -l fsm')
     check_stdout("./test_mlgrep.rb",
+                 "./mlgrep",
                  "./any_white_space.rb",
                  "./test_fsm.rb")
   end
@@ -102,24 +104,24 @@ class TestMlgrep < Test::Unit::TestCase
   end
 
   def test_searching_all_ruby_files_for_regex_excluding_test_files
-    mlgrep(*%w'-x test_ -R \$\S+')
+    mlgrep(*%w'-x test_ -r *.rb \$\S+')
     check_stdout("./any_white_space.rb:37: $0",
-                 "./fsm.rb:138: $stderr",
-                 "./fsm.rb:138: $DEBUG")
+                 "./fsm.rb:138: $DEBUG",
+                 "./fsm.rb:138: $stderr")
   end
 
   def test_line_mode
     mlgrep(*%w'withoutXmlComments skip_stuff.rb')
-    check_stdout "skip_stuff.rb:7: withoutXmlComments"
+    check_stdout "skip_stuff.rb:9: withoutXmlComments"
 
     mlgrep(*%w'-n withoutXmlComments skip_stuff.rb')
-    check_stdout "skip_stuff.rb:7: def withoutXmlComments"
+    check_stdout "skip_stuff.rb:9: def withoutXmlComments"
   end
 
 
   def test_only_group_match
     mlgrep(*%w'-o without(X..)Comments skip_stuff.rb')
-    check_stdout "skip_stuff.rb:7: Xml"
+    check_stdout "skip_stuff.rb:9: Xml"
   end
 
   def test_statistics
@@ -197,7 +199,8 @@ class TestMlgrep < Test::Unit::TestCase
   end
   
   def check_stdout(*lines)
-    assert_equal lines.join("\n") + "\n", $stdout.string
+    assert_equal(lines.sort.join("\n"),
+                 $stdout.string.split(/\n/).sort.join("\n"))
     $stdout.string = ''
   end
 end
