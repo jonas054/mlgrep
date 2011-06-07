@@ -111,8 +111,8 @@ def multiline_grep(filename, text, do_strip, re, flags)
 end
 
 class String
-  def realpath!
-    replace Pathname.new(self).realpath.to_s
+  def realpath
+    Pathname.new(self).realpath.to_s
   rescue Errno::ENOENT => e
     p e
   end
@@ -120,11 +120,11 @@ end
 
 def mlgrep_search_files(output, re, names, flags = {})
   filenames = names.select { |name|
-    File.exist?(name) and File.file?(name)
+    File.file?(name) and not File.symlink?(name)
   }
   filenames.each { |filename|
     text = IO.read filename rescue text = ""
-    filename.realpath! if flags[:absolute_paths]
+    filename = filename.realpath if flags[:absolute_paths]
 
     multiline_grep filename, text, :strip, re, flags do |line_nr, match|
       if flags[:list]
@@ -150,7 +150,7 @@ def get_property(name)
   end
 end
 
-SrcExt = get_property 'source' # extensions for files search by -S
+SourcePattern = get_property 'source' # files search by -S
 
 def make_regex(re_string, flags)
   # special regexp \u (until)
