@@ -242,7 +242,10 @@ end
 
 def print_statistics(regexp_to_find)
   [ $file_statistics, $match_statistics ].each { |table|
-    table.sort.each { |key, count| puts "%5d %s" % [count, key] }
+    table.sort.each { |key, count|
+      key = %Q{"#{key}"} if key =~ /\s+$/
+      puts "%5d %s" % [count, key]
+    }
     if table.object_id == $file_statistics.object_id
       puts "-" * 50
     else
@@ -306,13 +309,10 @@ def mlgrep(*args)
       # the match.
       multiline_grep "STDIN", $stdin.read, :raw, regexp_to_find, flags do
         |line_nr, match|
-        print match
+        puts match
       end
     end
-
-    mlgrep_search_files($stdout, regexp_to_find, args.exclude(exclude_regexen),
-                        flags)
-
+   
     print_statistics regexp_to_find if flags[:statistics]
   }
 end
