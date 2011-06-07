@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 load 'mlgrep'
 require 'test/unit'
 require 'stringio'
@@ -93,12 +94,12 @@ class TestMlgrep < Test::Unit::TestCase
     mlgrep(*%w'\$\w+ fsm.rb any_white_space.rb')
     check_stdout("fsm.rb:138: $stderr",
                  "fsm.rb:138: $DEBUG",
-                 "any_white_space.rb:36: $0")
+                 "any_white_space.rb:37: $0")
   end
 
   def test_searching_all_ruby_files_for_regex_excluding_test_files
     mlgrep(*%w'-x test_ -R \$\S+')
-    check_stdout("./any_white_space.rb:36: $0",
+    check_stdout("./any_white_space.rb:37: $0",
                  "./fsm.rb:138: $stderr",
                  "./fsm.rb:138: $DEBUG")
   end

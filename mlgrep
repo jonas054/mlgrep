@@ -76,6 +76,9 @@ module Enumerable
 end
 
 def multiline_grep(filename, text, do_strip, re, flags)
+  if text =~ /coding: ([\w-]+)/
+    encoding = $1
+  end
   if flags[:no_comments]
     text = case filename
            when /\.xml$/i                        then text.withoutXmlComments
