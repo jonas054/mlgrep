@@ -159,7 +159,8 @@ class TestMlgrep < Test::Unit::TestCase
   end
 
   def check_stdout(*lines)
-    assert_equal lines.join("\n") + "\n", $stdout.string
+    assert_equal(lines.sort.join("\n"),
+                 $stdout.string.split(/\n/).sort.join("\n"))
     $stdout.string = ''
   end
 end
