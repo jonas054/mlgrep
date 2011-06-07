@@ -15,7 +15,7 @@ require 'pathname'
 
 class Doc
   def self.usage
-    File.open("README").read.each { |line|
+    File.open("README").readlines.each { |line|
       puts line.sub(/^# ?/, '') unless line =~ /#!/
     }
     throw :exit
