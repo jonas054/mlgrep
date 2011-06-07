@@ -40,12 +40,9 @@ class String
       'UTF' => 'UTF-8'
     }
     loop {
-      raw_text = self[pos..-1]
-      if RUBY_VERSION !~ /\b1\.8/
-        raw_text = raw_text.dup.force_encoding 'ASCII-8BIT'
-      end
+      raw_text = self[pos..-1].ascii_8bit
       begin
-        if RUBY_VERSION !~ /\b1\.8/ and raw_text =~ /coding: ([\w-]+)/n
+        if respond_to? :force_encoding and raw_text =~ /coding: ([\w-]+)/n
           self[pos..-1].force_encoding proper_name[$1.upcase] || $1
           break unless self[pos..-1].valid_encoding?
         end
@@ -65,6 +62,14 @@ class String
         pos += relpos + $&.length
       end
     }
+  end
+
+  def ascii_8bit
+    if respond_to? :force_encoding
+      force_encoding 'ASCII-8BIT'
+    else
+      self
+    end
   end
 end
 
@@ -328,12 +333,7 @@ def hashbang_matches(normalized_args, dir)
   suffixless = Dir["#{dir}/*"] - Dir["#{dir}/*.*"]
   suffixless.each { |s|
     File.open_with_error_handling(s) { |f|
-      text = if RUBY_VERSION !~ /\b1\.8/
-               f.readline.force_encoding 'ASCII-8BIT'
-             else
-               f.readline
-             end
-      if not f.eof? and text =~ /^#!.*/
+      if not f.eof? and f.readline.ascii_8bit =~ /^#!.*/
         line1 = $&
         normalized_args.each { |arg|
           matches << s if line1 =~ interpreters[arg]
