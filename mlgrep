@@ -32,9 +32,11 @@ end
 class String
   # Usage: aString.match_with_line(re, file_name) { |match, line| ... }
   #        aString.match_with_line(re, file_name, true) { |match, line, pos| ... }
-  def match_with_line(re, file_name, include_pos = false, only_match = false)
+  def match_with_line(re, file_name, include_pos, only_match, encoding)
     pos = 0
     proper_name = {
+      # These are mappings from encoding names that appear in MRI ruby source
+      # code to their real names.
       'NIL' => 'ASCII-8BIT',
       'EUC' => 'EUC-JP',
       'UTF' => 'UTF-8'
@@ -45,8 +47,8 @@ class String
         raw_text = raw_text.dup.force_encoding 'ASCII-8BIT'
       end
       begin
-        if RUBY_VERSION !~ /\b1\.8/ and raw_text =~ /coding: ([\w-]+)/n
-          self[pos..-1].force_encoding proper_name[$1.upcase] || $1
+        if RUBY_VERSION !~ /\b1\.8/ and encoding
+          self[pos..-1].force_encoding proper_name[encoding.upcase] || encoding
           break unless self[pos..-1].valid_encoding?
         end
         relpos = self[pos..-1] =~ re or break
@@ -93,7 +95,7 @@ def multiline_grep(filename, text, do_strip, re, flags)
   text = text.withoutCppStrings if flags[:no_strings]
 
   text.match_with_line(re, filename, false,
-                       flags[:only_match]) { |match, line_nr|
+                       flags[:only_match], encoding) { |match, line_nr|
     match.gsub!(/\s+/, ' ') if do_strip == :strip
     q = flags[:quiet]
     match[q...-q] = ' ... ' if q and match.size > 2*q+5

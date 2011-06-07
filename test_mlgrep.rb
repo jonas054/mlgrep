@@ -157,6 +157,39 @@ class TestMlgrep < Test::Unit::TestCase
                  "fsm.rb:71: name")
   end
 
+  def test_space_in_regexp
+    mlgrep 'nil @state', 'fsm.rb'
+    check_stdout("fsm.rb:168: nil @state",
+                 "fsm.rb:177: nil @state")
+  end
+
+  def test_until_in_regexp
+    mlgrep(*%w'<\u[>\n] fsm.rb')
+    check_stdout("fsm.rb:15: <\#{name}>",
+                 "fsm.rb:37: <tt>",
+                 "fsm.rb:37: </tt>",
+                 "fsm.rb:41: <tt>",
+                 "fsm.rb:41: </tt>",
+                 "fsm.rb:58: << \"\#{oldState}-(\#{event})->",
+                 "fsm.rb:65: << \"[prime \#{ev}]\" ",
+                 "fsm.rb:83: <joning@home.se>",
+                 "fsm.rb:115: <tt>",
+                 "fsm.rb:115: </tt>",
+                 "fsm.rb:124: << [state, event, newState, ",
+                 "fsm.rb:138: << \"\#@event \#@state->")
+  end
+  
+  def test_bad_encoding
+    name = "testfile.txt"
+    File.open(name, "w") { |f| f.puts "# -*- coding: bogus-8 -*-" }
+    if RUBY_VERSION !~ /1.8/
+      mlgrep '.', name
+      check_stdout "Warning: unknown encoding name - bogus-8 in testfile.txt"
+    end
+  ensure
+    File.unlink name
+  end
+  
   def check_stdout(*lines)
     assert_equal lines.join("\n") + "\n", $stdout.string
     $stdout.string = ''
