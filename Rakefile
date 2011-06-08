@@ -16,6 +16,7 @@ when /1\.9/ then add_if_present 'ruby1.8'
 end
 add_if_present 'jruby'
 add_if_present 'jruby-1.5.0'
+add_if_present 'jruby-1.6.2'
 
 task :test do
   $rubies.each { |r| run_suite r }
