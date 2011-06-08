@@ -158,15 +158,18 @@ def get_property(name)
 end
 
 def create_default_mlgreprc
-    File.open(in_home_dir('.mlgreprc'), 'w') { |f|
-        f.puts "source: '{*.{cc,c,cpp},*.{hh,h,hpp},*.java,*.{pl,PL,pm,pod,t},{*.cmake,CMakeLists.txt},*.{py},*.rb}'"
-    }
+  File.open(in_home_dir('.mlgreprc'), 'w') { |f|
+    f.puts "# Glob pattern for files to find with the -S flag."
+    f.puts "source: '{*.{cc,c,cpp},*.{hh,h,hpp},*.java,*.{pl,PL,pm,pod,t},{*.cmake,CMakeLists.txt},*.{py},*.rb}'"
+    f.puts "# Regular expression for files and directories to exclude with the -X flag."
+    f.puts "exclude: '.svn/'"
+  }
 end
 
-SourcePattern = get_property 'source' # files search by -S
+SourcePattern = get_property 'source' # files searched by -S
 
 def make_regex(re_string, flags)
-  # special regexp \u (until)
+  # Special regexp \u (until)
   re_string.gsub!(/\\u\[(.*?[^\\])\]/, '[^\1]*[\1]')
   re_string.gsub!(/\\u(\\?.)/, '[^\1]*\1')
 
