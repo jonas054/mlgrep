@@ -99,14 +99,12 @@ class TestMlgrep < Test::Unit::TestCase
   def test_searching_two_files_for_regex
     mlgrep(*%w'\$\w+ fsm.rb any_white_space.rb')
     check_stdout("fsm.rb:138: $stderr",
-                 "fsm.rb:138: $DEBUG",
-                 "any_white_space.rb:37: $0")
+                 "fsm.rb:138: $DEBUG")
   end
 
   def test_searching_all_ruby_files_for_regex_excluding_test_files
     mlgrep(*%w'-x test_ -r *.rb \$\S+')
-    check_stdout("./any_white_space.rb:37: $0",
-                 "./fsm.rb:138: $DEBUG",
+    check_stdout("./fsm.rb:138: $DEBUG",
                  "./fsm.rb:138: $stderr")
   end
 
@@ -200,7 +198,9 @@ class TestMlgrep < Test::Unit::TestCase
   
   def check_stdout(*lines)
     assert_equal(lines.sort.join("\n"),
-                 $stdout.string.split(/\n/).sort.join("\n"))
+                 # The _flymake files are temporary files created by Emacs.
+                 $stdout.string.split(/\n/).reject { |n| n =~ /_flymake.rb/ }.
+                 sort.join("\n"))
     $stdout.string = ''
   end
 end
