@@ -4,7 +4,7 @@ def add_if_present(version)
 end
 
 def run_suite(r)
-  sh "#{r} -v; #{r} -e 'load(*Dir[%{test_*.rb}])'"
+  sh "#{r} -v; #{r} -e 'Dir[%{test_*.rb}].each {|f|load f}'"
 end
 
 $rubies = %w(ruby)
