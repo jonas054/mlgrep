@@ -23,7 +23,7 @@ class TestMlgrep < Test::Unit::TestCase
   end
 
   def test_help
-    assert_equal 0, mlgrep('-h')
+    assert_equal 1, mlgrep('-h')
     assert $stdout.string =~ /Option flags can be compounded. I.e., -ics means -i -c -s./
     $stdout.string = ''
   end
