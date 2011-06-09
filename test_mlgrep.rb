@@ -108,6 +108,12 @@ class TestMlgrep < Test::Unit::TestCase
                  "./fsm.rb:138: $stderr")
   end
 
+  def test_searching_file_with_explicit_directory
+    mlgrep(*%w'-r fsm.rb \$\S+ non-existent/')
+    check_stdout("./fsm.rb:138: $DEBUG",
+                 "./fsm.rb:138: $stderr")
+  end
+
   def test_line_mode
     mlgrep(*%w'withoutXmlComments skip_stuff.rb')
     check_stdout "skip_stuff.rb:9: withoutXmlComments"
