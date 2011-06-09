@@ -28,8 +28,14 @@ class TestMlgrep < Test::Unit::TestCase
     $stdout.string = ''
   end
 
+  def test_return_value_when_nothing_is_found
+    assert_equal 1, mlgrep(*%w'xyz123 fsm.rb')
+    assert_equal 1, mlgrep(*%w'-k xyz123 fsm.rb')
+    check_stdout "    0 TOTAL /xyz123/\n--------------------------------------------------"
+  end
+
   def test_searching_one_file_for_string
-    mlgrep 'class FSM', 'fsm.rb'
+    assert_equal 0, mlgrep('class FSM', 'fsm.rb')
     check_stdout "fsm.rb:86: class FSM"
   end
 
@@ -123,7 +129,7 @@ class TestMlgrep < Test::Unit::TestCase
   end
 
   def test_statistics
-    mlgrep(*%w'-k F.. fsm.rb')
+    assert_equal 0, mlgrep(*%w'-k F.. fsm.rb')
     check_stdout("   26 fsm.rb",
                  "--------------------------------------------------",
                  "   23 FSM",
