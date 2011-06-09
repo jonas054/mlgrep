@@ -87,9 +87,8 @@ module Enumerable
 end
 
 def multiline_grep(filename, text, do_strip, re, flags)
-  if text =~ /coding: ([\w-]+)/
-    encoding = $1
-  end
+  encoding = $1 if text =~ /coding: ([\w-]+)/
+
   if flags[:no_comments]
     text = case filename
            when /\.xml$/i
@@ -163,8 +162,10 @@ end
 def create_default_mlgreprc
   File.open(in_home_dir('.mlgreprc'), 'w') { |f|
     f.puts "# Glob pattern for files to find with the -S flag."
-    f.puts "source: '{*.{cc,c,cpp},*.{hh,h,hpp},*.java,*.{pl,PL,pm,pod,t},{*.cmake,CMakeLists.txt},*.{py},*.rb}'"
-    f.puts "# Regular expression for files and directories to exclude with the -X flag."
+    f.puts("source: '{*.{cc,c,cpp,hh,h,hpp,java,pl,PL,pm,pod,t,py,rb,cmake}," +
+           "CMakeLists.txt}'")
+    f.puts("# Regular expression for files and directories to exclude with " +
+           "the -X flag.")
     f.puts "exclude: '.svn/'"
   }
 end
