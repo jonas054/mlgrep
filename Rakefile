@@ -31,7 +31,7 @@ task $& do run_suite $1 end if ARGV[0] =~ /test_with_(.*)/
 # can get all the uncovered lines anyway. You'll need to
 # gem install cover_me
 task :cover_me do
-  sh "rm coverage.data"
+  rm_f "coverage.data"
   ruby "-rcover_me test_mlgrep.rb"
   eval(IO.read('coverage.data'))['mlgrep'].each_with_index { |cov, ix|
     puts "mlgrep:#{ix+1}: Not covered" if cov == 0

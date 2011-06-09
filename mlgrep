@@ -87,9 +87,8 @@ module Enumerable
 end
 
 def multiline_grep(filename, text, do_strip, re, flags)
-  if text =~ /coding: ([\w-]+)/
-    encoding = $1
-  end
+  encoding = $1 if text =~ /coding: ([\w-]+)/
+
   if flags[:no_comments]
     text = case filename
            when /\.xml$/i
@@ -110,17 +109,12 @@ def multiline_grep(filename, text, do_strip, re, flags)
     end
   end
 
-  text.match_with_line(re, filename, false,
-                       flags[:only_match], encoding) { |match, line_nr|
+  text.match_with_line(re, filename, false, flags[:only_match],
+                       encoding) { |match, line_nr|
     match.gsub!(/\s+/, ' ') if do_strip == :strip
     q = flags[:quiet]
     match[q...-q] = ' ... ' if q and match.size > 2*q+5
-    if flags[:statistics]
-      $match_statistics[match] += 1
-      $file_statistics[filename] += 1
-    else
-      yield line_nr, match
-    end
+    yield line_nr, match
   }
 end
 
@@ -128,22 +122,30 @@ def mlgrep_search_files(output, re, names, flags = {})
   filenames = names.select { |name|
     File.file?(name) and not File.symlink?(name)
   }
+  anything_found = false
   filenames.each { |filename|
     text = IO.read filename rescue text = ""
     filename = filename.realpath if flags[:absolute_paths]
 
     multiline_grep filename, text, :strip, re, flags do |line_nr, match|
-      if flags[:list]
-        $stdout << "#{filename}\n"
-        break
-      end
+      anything_found = true
+      if flags[:statistics]
+        $match_statistics[match] += 1
+        $file_statistics[filename] += 1
+      else
+        if flags[:list]
+          puts filename
+          break
+        end
 
-      match = text.split(/\n/)[line_nr - 1].strip if flags[:line]
-      output << "#{filename}:#{line_nr}: " unless flags[:no_line_nr]
-      yield filename, line_nr, match if block_given?
-      output << match << "\n"
+        match = text.split(/\n/)[line_nr - 1].strip if flags[:line]
+        output << "#{filename}:#{line_nr}: " unless flags[:no_line_nr]
+        yield filename, line_nr, match if block_given?
+        output << match << "\n"
+      end
     end
   }
+  anything_found
 end
 
 def get_property(name)
@@ -160,8 +162,10 @@ end
 def create_default_mlgreprc
   File.open(in_home_dir('.mlgreprc'), 'w') { |f|
     f.puts "# Glob pattern for files to find with the -S flag."
-    f.puts "source: '{*.{cc,c,cpp},*.{hh,h,hpp},*.java,*.{pl,PL,pm,pod,t},{*.cmake,CMakeLists.txt},*.{py},*.rb}'"
-    f.puts "# Regular expression for files and directories to exclude with the -X flag."
+    f.puts("source: '{*.{cc,c,cpp,hh,h,hpp,java,pl,PL,pm,pod,t,py,rb,cmake}," +
+           "CMakeLists.txt}'")
+    f.puts("# Regular expression for files and directories to exclude with " +
+           "the -X flag.")
     f.puts "exclude: '.svn/'"
   }
 end
@@ -286,12 +290,14 @@ def mlgrep(*args)
 
     exclude_regexen << %r"\b#{regexp_to_find.source}\b" if flags[:exclude_self]
    
+    anything_found = false
     args = args.exclude(exclude_regexen)
     files = args.select { |e| File.file?(e) }
     if files.any?
-      mlgrep_search_files($stdout, regexp_to_find, files.flatten.uniq, flags)
+      anything_found ||= mlgrep_search_files($stdout, regexp_to_find,
+                                             files.flatten.uniq, flags)
     end
-   
+
     if patterns.any?
       # Search recursively for files if a pattern option was given.
       require 'find'
@@ -310,8 +316,8 @@ def mlgrep(*args)
               Dir[File.join(f,p)].exclude exclude_regexen
             }
             files << hashbang_matches(normalized_args, f)
-            mlgrep_search_files($stdout, regexp_to_find, files.flatten.uniq,
-                                flags)
+            anything_found ||= mlgrep_search_files($stdout, regexp_to_find,
+                                                   files.flatten.uniq, flags)
           end
         end
       }
@@ -326,13 +332,14 @@ def mlgrep(*args)
       multiline_grep "STDIN", $stdin.read, :raw, regexp_to_find, flags do
         |line_nr, match|
         puts match
+        anything_found = true
       end
     end
    
     print_statistics regexp_to_find if flags[:statistics]
-    return 0
+    return anything_found ? 0 : 1
   }
-  return 1
+  1 # We end up here because of throw :exit, so it's an error.
 end
 
 def hashbang_matches(normalized_args, dir)
