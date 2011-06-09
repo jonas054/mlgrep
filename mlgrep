@@ -330,7 +330,9 @@ def mlgrep(*args)
     end
    
     print_statistics regexp_to_find if flags[:statistics]
+    return 0
   }
+  return 1
 end
 
 def hashbang_matches(normalized_args, dir)
@@ -367,4 +369,4 @@ class File
   end
 end
 
-mlgrep(*ARGV) if $0 == __FILE__
+exit(mlgrep(*ARGV)) if $0 == __FILE__
