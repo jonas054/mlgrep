@@ -238,7 +238,7 @@ def parse_args(args)
     when '-J' then patterns << '*.java'
     when '-L' then patterns << '*.{pl,PL,pm,pod,t}'
     when '-M' then patterns << '{*.cmake,CMakeLists.txt}'
-    when '-P' then patterns << '*.{py}'
+    when '-P' then patterns << '*.py'
     when '-R' then patterns << '*.rb'
     when '-S' then patterns << SourcePattern
     when '-r' then patterns << args.shift
