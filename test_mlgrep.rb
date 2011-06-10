@@ -126,7 +126,7 @@ class TestMlgrep < Test::Unit::TestCase
                         "./test_fsm.rb",
                         "./fsm.rb")
 
-    # fsm.rb is ecluded but not test_fsm.rb.
+    # fsm.rb is excluded but not test_fsm.rb.
     mlgrep(*%w'-Re -l fsm')
     check_sorted_stdout("./test_mlgrep.rb",
                         "./mlgrep",
