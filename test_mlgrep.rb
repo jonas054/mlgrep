@@ -31,7 +31,8 @@ class TestMlgrep < Test::Unit::TestCase
   def test_return_value_when_nothing_is_found
     assert_equal 1, mlgrep(*%w'xyz123 fsm.rb')
     assert_equal 1, mlgrep(*%w'-k xyz123 fsm.rb')
-    check_stdout "    0 TOTAL /xyz123/\n--------------------------------------------------"
+    check_stdout("--------------------------------------------------",
+                 "    0 TOTAL /xyz123/")
   end
 
   def test_searching_one_file_for_string
@@ -88,18 +89,18 @@ class TestMlgrep < Test::Unit::TestCase
 
   def test_exclude_self
     mlgrep(*%w'-R -l fsm')
-    check_stdout("./test_mlgrep.rb",
-                 "./any_white_space.rb",
-                 "./mlgrep",
-                 "./test_fsm.rb",
-                 "./fsm.rb")
+    check_sorted_stdout("./test_mlgrep.rb",
+                        "./any_white_space.rb",
+                        "./mlgrep",
+                        "./test_fsm.rb",
+                        "./fsm.rb")
 
     # fsm.rb is ecluded but not test_fsm.rb.
     mlgrep(*%w'-Re -l fsm')
-    check_stdout("./test_mlgrep.rb",
-                 "./mlgrep",
-                 "./any_white_space.rb",
-                 "./test_fsm.rb")
+    check_sorted_stdout("./test_mlgrep.rb",
+                        "./mlgrep",
+                        "./any_white_space.rb",
+                        "./test_fsm.rb")
   end
 
   def test_searching_two_files_for_regex
@@ -110,14 +111,14 @@ class TestMlgrep < Test::Unit::TestCase
 
   def test_searching_all_ruby_files_for_regex_excluding_test_files
     mlgrep(*%w'-x test_ -r *.rb \$\S+')
-    check_stdout("./fsm.rb:138: $DEBUG",
-                 "./fsm.rb:138: $stderr")
+    check_sorted_stdout("./fsm.rb:138: $DEBUG",
+                        "./fsm.rb:138: $stderr")
   end
 
   def test_searching_file_with_explicit_directory
     mlgrep(*%w'-r fsm.rb \$\S+ non-existent/')
-    check_stdout("./fsm.rb:138: $DEBUG",
-                 "./fsm.rb:138: $stderr")
+    check_sorted_stdout("./fsm.rb:138: $DEBUG",
+                        "./fsm.rb:138: $stderr")
   end
 
   def test_line_mode
@@ -183,18 +184,18 @@ class TestMlgrep < Test::Unit::TestCase
 
   def test_until_in_regexp
     mlgrep(*%w'<\u[>\n] fsm.rb')
-    check_stdout("fsm.rb:15: <\#{name}>",
-                 "fsm.rb:37: <tt>",
-                 "fsm.rb:37: </tt>",
-                 "fsm.rb:41: <tt>",
-                 "fsm.rb:41: </tt>",
-                 "fsm.rb:58: << \"\#{oldState}-(\#{event})->",
-                 "fsm.rb:65: << \"[prime \#{ev}]\" ",
-                 "fsm.rb:83: <joning@home.se>",
-                 "fsm.rb:115: <tt>",
-                 "fsm.rb:115: </tt>",
-                 "fsm.rb:124: << [state, event, newState, ",
-                 "fsm.rb:138: << \"\#@event \#@state->")
+    check_stdout('fsm.rb:15: <#{name}>',
+                 'fsm.rb:37: <tt>',
+                 'fsm.rb:37: </tt>',
+                 'fsm.rb:41: <tt>',
+                 'fsm.rb:41: </tt>',
+                 'fsm.rb:58: << "#{oldState}-(#{event})->',
+                 'fsm.rb:65: << "[prime #{ev}]" ',
+                 'fsm.rb:83: <joning@home.se>',
+                 'fsm.rb:115: <tt>',
+                 'fsm.rb:115: </tt>',
+                 'fsm.rb:124: << [state, event, newState, ',
+                 'fsm.rb:138: << "#@event #@state->')
   end
   
   def test_bad_encoding
@@ -207,12 +208,22 @@ class TestMlgrep < Test::Unit::TestCase
   ensure
     File.unlink name
   end
+
+  private
   
   def check_stdout(*lines)
-    assert_equal(lines.sort.join("\n"),
-                 # The _flymake files are temporary files created by Emacs.
-                 $stdout.string.split(/\n/).reject { |n| n =~ /_flymake.rb/ }.
-                 sort.join("\n"))
+    check_any_stdout(lines) { |lines| lines }
+  end
+
+  def check_sorted_stdout(*lines)
+    check_any_stdout(lines) { |lines| lines.sort }
+  end
+
+  def check_any_stdout(lines)
+    expected = yield lines
+    # The _flymake files are temporary files created by Emacs.
+    actual = yield $stdout.string.split(/\n/).reject { |n| n =~ /_flymake.rb/ }
+    assert_equal expected, actual
     $stdout.string = ''
   end
 end
