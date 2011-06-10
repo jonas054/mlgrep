@@ -22,6 +22,18 @@ class TestMlgrep < Test::Unit::TestCase
     $stderr.string = ''
   end
 
+  def test_only_X_flag
+    assert_equal 1, mlgrep('-X', 'abc')
+    assert $stderr.string =~ /Exclusion flag .* but no pattern flag .* or file list/
+    $stderr.string = ''
+  end
+
+  def test_only_x_flag
+    assert_equal 1, mlgrep('-x', '/test/', 'abc')
+    assert $stderr.string =~ /Exclusion flag .* but no pattern flag .* or file list/
+    $stderr.string = ''
+  end
+
   def test_help
     assert_equal 1, mlgrep('-h')
     assert $stdout.string =~ /Option flags can be compounded. I.e., -ics means -i -c -s./
@@ -44,6 +56,17 @@ class TestMlgrep < Test::Unit::TestCase
     mlgrep '-a', 'class FSM', 'fsm.rb'
     assert $stdout.string =~ %r'^/'
     $stdout.string = ''
+  end
+
+  def test_quiet_mode
+    mlgrep '-q', 'class FSM.*end', 'fsm.rb'
+    check_stdout "fsm.rb:86: class FSM # Represen ... e.write(s) } end end"
+  end
+
+  def test_newline_in_line_mode
+    mlgrep '-n', 'class FSM\n', 'fsm.rb'
+    assert $stderr.string =~ /Don't use \\n in regexp when in line mode/
+    $stderr.string = ''
   end
 
   def test_case_insensitive
@@ -147,8 +170,13 @@ class TestMlgrep < Test::Unit::TestCase
   end
 
   def test_skipping_comments
-    mlgrep(*%w'-c FSM fsm.rb')
-    check_stdout "fsm.rb:86: FSM"
+    mlgrep(*%w'-c class fsm.rb mlgrep')
+    check_sorted_stdout("fsm.rb:1: class",
+                        "fsm.rb:86: class",
+                        "fsm.rb:90: class",
+                        "mlgrep:16: class",
+                        "mlgrep:32: class",
+                        "mlgrep:364: class")
   end
 
   def test_skipping_strings
@@ -207,6 +235,11 @@ class TestMlgrep < Test::Unit::TestCase
     end
   ensure
     File.unlink name
+  end
+
+  def test_zero_length_match
+    mlgrep('(class FSM)?', 'fsm.rb')
+    check_stdout('fsm.rb:86: class FSM')
   end
 
   private
