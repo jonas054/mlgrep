@@ -15,19 +15,19 @@ class TestUsageErrors < Test::Unit::TestCase
 
   def test_no_args
     assert_equal 1, mlgrep
-    assert $stderr.string =~ /No regexp was given.*Usage:/m
+    assert $stderr.string =~ %r"No regexp was given.*Usage:"m
     $stderr.string = ''
   end
 
   def test_only_X_flag
     assert_equal 1, mlgrep('-X', 'abc')
-    assert $stderr.string =~ /Exclusion flag .* but no pattern flag/
+    assert $stderr.string =~ %r"Exclusion flag .* but no pattern flag"
     $stderr.string = ''
   end
 
   def test_only_x_flag
     assert_equal 1, mlgrep('-x', '/test/', 'abc')
-    assert $stderr.string =~ /Exclusion flag .* but no pattern flag/
+    assert $stderr.string =~ %r"Exclusion flag .* but no pattern flag"
     $stderr.string = ''
   end
 
