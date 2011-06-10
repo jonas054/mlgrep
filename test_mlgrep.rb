@@ -3,16 +3,13 @@ load 'mlgrep'
 require 'test/unit'
 require 'stringio'
 
-class TestMlgrep < Test::Unit::TestCase
+class TestUsageErrors < Test::Unit::TestCase
   def setup
-    $stdout = StringIO.new
     $stderr = StringIO.new
   end
 
   def teardown
-    assert_equal "", $stdout.string
     assert_equal "", $stderr.string
-    $stdout = STDOUT
     $stderr = STDERR
   end
 
@@ -32,6 +29,23 @@ class TestMlgrep < Test::Unit::TestCase
     assert_equal 1, mlgrep('-x', '/test/', 'abc')
     assert $stderr.string =~ /Exclusion flag .* but no pattern flag/
     $stderr.string = ''
+  end
+
+  def test_newline_in_line_mode
+    mlgrep '-n', 'class FSM\n', 'fsm.rb'
+    assert $stderr.string =~ %r"Don't use \\n in regexp when in line mode"
+    $stderr.string = ''
+  end
+end
+
+class TestMlgrep < Test::Unit::TestCase
+  def setup
+    $stdout = StringIO.new
+  end
+
+  def teardown
+    assert_equal "", $stdout.string
+    $stdout = STDOUT
   end
 
   def test_help
@@ -61,12 +75,6 @@ class TestMlgrep < Test::Unit::TestCase
   def test_quiet_mode
     mlgrep '-q', 'class FSM.*end', 'fsm.rb'
     check_stdout "fsm.rb:86: class FSM # Represen ... e.write(s) } end end"
-  end
-
-  def test_newline_in_line_mode
-    mlgrep '-n', 'class FSM\n', 'fsm.rb'
-    assert $stderr.string =~ /Don't use \\n in regexp when in line mode/
-    $stderr.string = ''
   end
 
   def test_case_insensitive
