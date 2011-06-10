@@ -24,19 +24,19 @@ class TestMlgrep < Test::Unit::TestCase
 
   def test_only_X_flag
     assert_equal 1, mlgrep('-X', 'abc')
-    assert $stderr.string =~ /Exclusion flag .* but no pattern flag .* or file list/
+    assert $stderr.string =~ /Exclusion flag .* but no pattern flag/
     $stderr.string = ''
   end
 
   def test_only_x_flag
     assert_equal 1, mlgrep('-x', '/test/', 'abc')
-    assert $stderr.string =~ /Exclusion flag .* but no pattern flag .* or file list/
+    assert $stderr.string =~ /Exclusion flag .* but no pattern flag/
     $stderr.string = ''
   end
 
   def test_help
     assert_equal 1, mlgrep('-h')
-    assert $stdout.string =~ /Option flags can be compounded. I.e., -ics means -i -c -s./
+    assert $stdout.string =~ /can be compounded. I.e., -ics means -i -c -s./
     $stdout.string = ''
   end
 
