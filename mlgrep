@@ -30,9 +30,7 @@ def short_usage(msg)
 end
 
 class String
-  # Usage: aString.match_with_line(re, file_name) { |match, line| ... }
-  #        aString.match_with_line(re, file_name, true) { |match, line, pos| ... }
-  def match_with_line(re, file_name, include_pos, only_match, encoding)
+  def match_with_line(re, file_name, only_match, encoding)
     pos = 0
     proper_name = {
       # These are mappings from encoding names that appear in MRI ruby source
@@ -56,11 +54,10 @@ class String
       line  = self[0..pos+relpos].count("\n") + 1
       match = only_match ? "#$1 #$2 #$3 #$4 #$5 #$6 #$7 #$8 #$9".strip || $& : $&
       if $&.empty?
-        pos += 1 # avoid infinite loop
+        pos += relpos + 1 # avoid infinite loop
+        break if pos >= length
       else
-        args = [match, line]
-        args << (pos + relpos) if include_pos
-        yield(*args) if block_given?
+        yield match, line
         pos += relpos + $&.length
       end
     }
@@ -109,8 +106,8 @@ def multiline_grep(filename, text, do_strip, re, flags)
     end
   end
 
-  text.match_with_line(re, filename, false, flags[:only_match],
-                       encoding) { |match, line_nr|
+  text.match_with_line(re, filename, flags[:only_match], encoding) {
+    |match, line_nr|
     match.gsub!(/\s+/, ' ') if do_strip == :strip
     q = flags[:quiet]
     match[q...-q] = ' ... ' if q and match.size > 2*q+5
