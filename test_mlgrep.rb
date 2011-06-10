@@ -253,11 +253,11 @@ class TestMlgrep < Test::Unit::TestCase
   private
   
   def check_stdout(*lines)
-    check_any_stdout(lines) { |lines| lines }
+    check_any_stdout(lines) { |a| a }
   end
 
   def check_sorted_stdout(*lines)
-    check_any_stdout(lines) { |lines| lines.sort }
+    check_any_stdout(lines) { |a| a.sort }
   end
 
   def check_any_stdout(lines)
