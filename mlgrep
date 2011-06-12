@@ -1,9 +1,5 @@
 #!/usr/bin/env ruby
 
-def in_home_dir(rel_path)
-  File.join(ENV['HOME'] || ENV['HOMEDRIVE'], rel_path)
-end
-
 require 'pathname'
 
 # Path for any_white_space.rb, skip_stuff.rb, and (indirectly) fsm.rb
@@ -13,182 +9,83 @@ require 'any_white_space'
 require 'skip_stuff' # String#without{Xml|Cpp}Comments, String#withoutCppStrings
 require 'pathname'
 
-class Doc
-  def self.usage
-    File.open("README").readlines.each { |line|
-      puts line.sub(/^# ?/, '') unless line =~ /#!/
-    }
-    throw :exit
-  end
-end
-    
-def short_usage(msg)
-  $stderr << msg << "\n\n" <<
-    # Extract usage information (synopsis) from this file.
-    IO.read("README")[%r"Usage.*?(?=-[^h]:)"m] << "\n"
-  throw :exit
-end
+def mlgrep(*args)
+  catch(:exit) {
+    $match_statistics = Hash.new 0
+    $file_statistics = Hash.new 0
+    args, normalized_args, flags, patterns, exclude_regexen = parse_args args
+   
+    Doc.usage if flags[:help]
+    short_usage 'No regexp was given.' if args.empty?
 
-class String
-  def match_with_line(re, file_name, only_match, encoding)
-    pos = 0
-    proper_name = {
-      # These are mappings from encoding names that appear in MRI ruby source
-      # code to their real names.
-      'NIL' => 'ASCII-8BIT',
-      'EUC' => 'EUC-JP',
-      'UTF' => 'UTF-8'
-    }
-    loop {
-      raw_text = self[pos..-1].force_encoding 'ASCII-8BIT'
-      begin
-        if encoding
-          self[pos..-1].force_encoding proper_name[encoding.upcase] || encoding
-          break unless self[pos..-1].valid_encoding?
-        end
-        relpos = self[pos..-1] =~ re or break
-      rescue ArgumentError
-        puts "Warning: #$! in #{file_name}"
-        break
-      end
-      line  = self[0..pos+relpos].count("\n") + 1
-      match = only_match ? "#$1 #$2 #$3 #$4 #$5 #$6 #$7 #$8 #$9".strip || $& : $&
-      if $&.empty?
-        pos += relpos + 1 # avoid infinite loop
-        break if pos >= length
-      else
-        yield match, line
-        pos += relpos + $&.length
-      end
-    }
-  end
+    # Work with duplicate of argument in case args are frozen.
+    regexp_to_find = make_regex args.shift.dup, flags
 
-  def realpath
-    Pathname.new(self).realpath.to_s
-  rescue Errno::ENOENT => e
-    p e
-  end
-
-  # Dummy implementations of string encoding methods for ruby 1.8.
-  unless "".respond_to? :force_encoding
-    def force_encoding(name) self end
-    def valid_encoding?() true end
-  end
-end
-
-module Enumerable
-  # Rejects all elements matching any of the given regexen.
-  def exclude(regexen)
-    reject { |name| regexen.find { |re| name =~ re } }
-  end
-end
-
-def multiline_grep(filename, text, do_strip, re, flags)
-  encoding = $1 if text =~ /coding: ([\w-]+)/
-
-  if flags[:no_comments]
-    text = case filename
-           when /\.xml$/i
-             text.withoutXmlComments
-           when /\.(properties|rb|sh|pm|pl|py|cmake|mak)$/, /CMakeLists.txt/
-             text.withoutScriptComments
-           else if text =~ /\A#[!\s]/m
-                  text.withoutScriptComments
-                else
-                  text.withoutCppComments
-                end
-           end
-  end
-  if flags[:no_strings]
-    text = text.withoutCppStrings
-    if filename =~ /\.py$/ || text =~ /\A#.*ython/
-      text = text.withoutPythonStrings
+    exclude_regexen << %r"\b#{regexp_to_find.source}\b" if flags[:exclude_self]
+   
+    anything_found = false
+    args = args.exclude(exclude_regexen)
+    files = args.select { |e| File.file?(e) }
+    if files.any?
+      anything_found ||= mlgrep_search_files($stdout, regexp_to_find,
+                                             files.flatten.uniq, flags)
     end
-  end
 
-  text.match_with_line(re, filename, flags[:only_match], encoding) {
-    |match, line_nr|
-    match.gsub!(/\s+/, ' ') if do_strip == :strip
-    q = flags[:quiet]
-    match[q...-q] = ' ... ' if q and match.size > 2*q+5
-    yield line_nr, match
-  }
-end
-
-def mlgrep_search_files(output, re, names, flags = {})
-  filenames = names.select { |name|
-    File.file?(name) and not File.symlink?(name)
-  }
-  anything_found = false
-  filenames.each { |filename|
-    text = IO.read filename rescue text = ""
-    filename = filename.realpath if flags[:absolute_paths]
-
-    multiline_grep filename, text, :strip, re, flags do |line_nr, match|
-      anything_found = true
-      if flags[:statistics]
-        $match_statistics[match] += 1
-        $file_statistics[filename] += 1
-      else
-        if flags[:list]
-          puts filename
-          break
+    if patterns.any?
+      # Search recursively for files if a pattern option was given.
+      require 'find'
+      dirs_to_search = args.select { |e| File.directory?(e) }
+      dirs_to_search = ['.'] if dirs_to_search.empty?
+      dirs_to_search.each { |dir|
+        Find.find dir do |f|
+          Find.prune if f =~ /\.snapshot/ or f =~ /~$/
+          Find.prune if exclude_regexen.find { |re| f =~ re }
+   
+          if File.directory? f and not File.symlink? f
+            f = f.realpath if flags[:absolute_paths]
+            files = patterns.map { |p|
+              Dir[File.join(f,p)].exclude exclude_regexen
+            }
+            files << hashbang_matches(normalized_args, f)
+            anything_found ||= mlgrep_search_files($stdout, regexp_to_find,
+                                                   files.flatten.uniq, flags)
+          end
         end
+      }
+    elsif args.empty? or args == ['/dev/null']
+      if exclude_regexen.any?
+        short_usage "Exclusion flag (-x or -X) but no pattern flag " +
+          "(-C,-H,-J,-L,-M,-P,-S,-r) or file list"
+      end
 
-        match = text.split(/\n/)[line_nr - 1].strip if flags[:line]
-        output << "#{filename}:#{line_nr}: " unless flags[:no_line_nr]
-        yield filename, line_nr, match if block_given?
-        output << match << "\n"
+      # If no filenames were given, mlgrep is used in pipe mode. Just print
+      # the match.
+      multiline_grep "STDIN", $stdin.read, :raw, regexp_to_find, flags do
+        |line_nr, match|
+        puts match
+        anything_found = true
       end
     end
+   
+    print_statistics regexp_to_find if flags[:statistics]
+    return anything_found ? 0 : 1
   }
-  anything_found
+  1 # We end up here because of throw :exit, so it's an error.
 end
 
-def get_property(name)
-  filename = in_home_dir '.mlgreprc'
-  create_default_mlgreprc unless File.exist? filename
-  lines = IO.readlines(filename).grep %r"^#{name}:"
-  case lines.size
-  when 0 then raise "No line starting with #{name}: found in #{filename}"
-  when 1 then lines.first.match(%r"([\"'])(.*)\1")[2]
-  else raise "Multiple entries for property #{name} found in #{filename}"
-  end
-end
-
-def create_default_mlgreprc
-  File.open(in_home_dir('.mlgreprc'), 'w') { |f|
-    f.puts "# Glob pattern for files to find with the -S flag."
-    f.puts("source: '{*.{cc,c,cpp,hh,h,hpp,java,pl,PL,pm,pod,t,py,rb,cmake}," +
-           "CMakeLists.txt}'")
-    f.puts("# Regular expression for files and directories to exclude with " +
-           "the -X flag.")
-    f.puts "exclude: '.svn/'"
+def print_statistics(regexp_to_find)
+  [ $file_statistics, $match_statistics ].each { |table|
+    table.sort.each { |key, count|
+      key = %Q{"#{key}"} if key =~ /\s+$/
+      puts "%5d %s" % [count, key]
+    }
+    if table.object_id == $file_statistics.object_id
+      puts "-" * 50
+    else
+      total = table.values.inject(0) { |sum, count| sum + count }
+      printf "%5d TOTAL /%s/\n", total, regexp_to_find.source
+    end
   }
-end
-
-SourcePattern = get_property 'source' # files searched by -S
-
-def make_regex(re_string, flags)
-  # Special regexp \u (until)
-  re_string.gsub!(/\\u\[(.*?[^\\])\]/, '[^\1]*[\1]')
-  re_string.gsub!(/\\u(\\?.)/, '[^\1]*\1')
-
-  # Expressions like [^\n]* are ok in -n mode so we filter out negative REs.
-  if flags[:line] and re_string.gsub(/\[\^.*?[^\\]\]/, '').index('\n')
-    short_usage "Don't use \\n in regexp when in line mode (-n)"
-  end
-
-  re_string = "\\b(?:#{re_string})\\b" if flags[:whole_word]
-  if flags[:line]
-    re_string = '^.*' + re_string + '.*[\n$]'
-    re_flags = 0
-  else
-    re_flags = Regexp::MULTILINE
-  end
-  re_flags |= Regexp::IGNORECASE if flags[:ignore_case]
-
-  Regexp.new(re_string, re_flags).any_white_space
 end
 
 def parse_args(args)
@@ -237,7 +134,7 @@ def parse_args(args)
     when '-M' then patterns << '{*.cmake,CMakeLists.txt}'
     when '-P' then patterns << '*.py'
     when '-R' then patterns << '*.rb'
-    when '-S' then patterns << SourcePattern
+    when '-S' then patterns << get_property('source')
     when '-r' then patterns << args.shift
     when '-x' then exclude_regexen << Regexp.new(args.shift)
     when '-X'
@@ -257,86 +154,137 @@ def parse_args(args)
   [args, normalized_args.grep(/^-/), flags, patterns, exclude_regexen]
 end
 
-def print_statistics(regexp_to_find)
-  [ $file_statistics, $match_statistics ].each { |table|
-    table.sort.each { |key, count|
-      key = %Q{"#{key}"} if key =~ /\s+$/
-      puts "%5d %s" % [count, key]
-    }
-    if table.object_id == $file_statistics.object_id
-      puts "-" * 50
-    else
-      total = table.values.inject(0) { |sum, count| sum + count }
-      printf "%5d TOTAL /%s/\n", total, regexp_to_find.source
-    end
+def get_property(name)
+  filename = in_home_dir '.mlgreprc'
+  create_default_mlgreprc unless File.exist? filename
+  lines = IO.readlines(filename).grep %r"^#{name}:"
+  case lines.size
+  when 0 then raise "No line starting with #{name}: found in #{filename}"
+  when 1 then lines.first.match(%r"([\"'])(.*)\1")[2]
+  else raise "Multiple entries for property #{name} found in #{filename}"
+  end
+end
+
+def create_default_mlgreprc
+  File.open(in_home_dir('.mlgreprc'), 'w') { |f|
+    f.puts "# Glob pattern for files to find with the -S flag."
+    f.puts("source: '{*.{cc,c,cpp,hh,h,hpp,java,pl,PL,pm,pod,t,py,rb,cmake}," +
+           "CMakeLists.txt}'")
+    f.puts("# Regular expression for files and directories to exclude with " +
+           "the -X flag.")
+    f.puts "exclude: '.svn/'"
   }
 end
 
-def mlgrep(*args)
-  catch(:exit) {
-    patterns, exclude_regexen = [], []
-    $match_statistics = Hash.new 0
-    $file_statistics = Hash.new 0
-    args, normalized_args, flags, patterns, exclude_regexen = parse_args args
-   
-    Doc.usage if flags[:help]
-    short_usage 'No regexp was given.' if args.empty?
+def in_home_dir(rel_path)
+  File.join(ENV['HOME'] || ENV['HOMEDRIVE'], rel_path)
+end
 
-    # Work with duplicate of argument in case args are frozen.
-    regexp_to_find = make_regex args.shift.dup, flags
+def make_regex(re_string, flags)
+  # Special regexp \u (until)
+  re_string.gsub!(/\\u\[(.*?[^\\])\]/, '[^\1]*[\1]')
+  re_string.gsub!(/\\u(\\?.)/, '[^\1]*\1')
 
-    exclude_regexen << %r"\b#{regexp_to_find.source}\b" if flags[:exclude_self]
-   
-    anything_found = false
-    args = args.exclude(exclude_regexen)
-    files = args.select { |e| File.file?(e) }
-    if files.any?
-      anything_found ||= mlgrep_search_files($stdout, regexp_to_find,
-                                             files.flatten.uniq, flags)
-    end
+  # Expressions like [^\n]* are ok in -n mode so we filter out negative REs.
+  if flags[:line] and re_string.gsub(/\[\^.*?[^\\]\]/, '').index('\n')
+    short_usage "Don't use \\n in regexp when in line mode (-n)"
+  end
 
-    if patterns.any?
-      # Search recursively for files if a pattern option was given.
-      require 'find'
-      dirs_to_search = args.select { |e|
-        File.directory?(e)
-      }
-      dirs_to_search = ['.'] if dirs_to_search.empty?
-      dirs_to_search.each { |dir|
-        Find.find dir do |f|
-          Find.prune if f =~ /\.snapshot/ or f =~ /~$/
-          Find.prune if exclude_regexen.find { |re| f =~ re }
-   
-          if File.directory? f and not File.symlink? f
-            f = f.realpath if flags[:absolute_paths]
-            files = patterns.map { |p|
-              Dir[File.join(f,p)].exclude exclude_regexen
-            }
-            files << hashbang_matches(normalized_args, f)
-            anything_found ||= mlgrep_search_files($stdout, regexp_to_find,
-                                                   files.flatten.uniq, flags)
-          end
-        end
-      }
-    elsif args.empty? or args == ['/dev/null']
-      if exclude_regexen.any?
-        short_usage "Exclusion flag (-x or -X) but no pattern flag " +
-          "(-C,-H,-J,-L,-M,-P,-S,-r) or file list"
-      end
+  re_string = "\\b(?:#{re_string})\\b" if flags[:whole_word]
+  if flags[:line]
+    re_string = '^.*' + re_string + '.*[\n$]'
+    re_flags = 0
+  else
+    re_flags = Regexp::MULTILINE
+  end
+  re_flags |= Regexp::IGNORECASE if flags[:ignore_case]
 
-      # If no filenames were given, mlgrep is used in pipe mode. Just print
-      # the match.
-      multiline_grep "STDIN", $stdin.read, :raw, regexp_to_find, flags do
-        |line_nr, match|
-        puts match
-        anything_found = true
-      end
-    end
-   
-    print_statistics regexp_to_find if flags[:statistics]
-    return anything_found ? 0 : 1
+  Regexp.new(re_string, re_flags).any_white_space
+end
+
+def mlgrep_search_files(output, re, names, flags = {})
+  filenames = names.select { |name|
+    File.file?(name) and not File.symlink?(name)
   }
-  1 # We end up here because of throw :exit, so it's an error.
+  anything_found = false
+  filenames.each { |filename|
+    text = IO.read filename rescue text = ""
+    filename = filename.realpath if flags[:absolute_paths]
+
+    multiline_grep filename, text, :strip, re, flags do |line_nr, match|
+      anything_found = true
+      if flags[:statistics]
+        $match_statistics[match] += 1
+        $file_statistics[filename] += 1
+      else
+        if flags[:list]
+          puts filename
+          break
+        end
+
+        match = text.split(/\n/)[line_nr - 1].strip if flags[:line]
+        output << "#{filename}:#{line_nr}: " unless flags[:no_line_nr]
+        yield filename, line_nr, match if block_given?
+        output << match << "\n"
+      end
+    end
+  }
+  anything_found
+end
+
+def multiline_grep(filename, text, do_strip, re, flags)
+  encoding = $1 if text =~ /coding: ([\w-]+)/
+
+  if flags[:no_comments]
+    text = case filename
+           when /\.xml$/i
+             text.withoutXmlComments
+           when /\.(properties|rb|sh|pm|pl|py|cmake|mak)$/, /CMakeLists.txt/
+             text.withoutScriptComments
+           else if text =~ /\A#[!\s]/m
+                  text.withoutScriptComments
+                else
+                  text.withoutCppComments
+                end
+           end
+  end
+  if flags[:no_strings]
+    text = text.withoutCppStrings
+    if filename =~ /\.py$/ || text =~ /\A#.*ython/
+      text = text.withoutPythonStrings
+    end
+  end
+
+  text.match_with_line(re, filename, flags[:only_match], encoding) {
+    |match, line_nr|
+    match.gsub!(/\s+/, ' ') if do_strip == :strip
+    q = flags[:quiet]
+    match[q...-q] = ' ... ' if q and match.size > 2*q+5
+    yield line_nr, match
+  }
+end
+
+module Enumerable
+  # Rejects all elements matching any of the given regexen.
+  def exclude(regexen)
+    reject { |name| regexen.find { |re| name =~ re } }
+  end
+end
+
+class Doc
+  def self.usage
+    File.open("README").readlines.each { |line|
+      puts line.sub(/^# ?/, '') unless line =~ /#!/
+    }
+    throw :exit
+  end
+end
+    
+def short_usage(msg)
+  $stderr << msg << "\n\n" <<
+    # Extract usage information (synopsis) from README file.
+    IO.read("README")[%r"Usage.*?(?=-[^h]:)"m] << "\n"
+  throw :exit
 end
 
 def hashbang_matches(normalized_args, dir)
@@ -370,6 +318,53 @@ class File
         $stdout.puts "mlgrep: #{e}"
       end
     end
+  end
+end
+
+class String
+  def match_with_line(re, file_name, only_match, encoding)
+    pos = 0
+    proper_name = {
+      # These are mappings from encoding names that appear in MRI ruby source
+      # code to their real names.
+      'NIL' => 'ASCII-8BIT',
+      'EUC' => 'EUC-JP',
+      'UTF' => 'UTF-8'
+    }
+    loop {
+      raw_text = self[pos..-1].force_encoding 'ASCII-8BIT'
+      begin
+        if encoding
+          self[pos..-1].force_encoding proper_name[encoding.upcase] || encoding
+          break unless self[pos..-1].valid_encoding?
+        end
+        relpos = self[pos..-1] =~ re or break
+      rescue ArgumentError
+        puts "Warning: #$! in #{file_name}"
+        break
+      end
+      line  = self[0..pos+relpos].count("\n") + 1
+      match = only_match ? "#$1 #$2 #$3 #$4 #$5 #$6 #$7 #$8 #$9".strip || $& : $&
+      if $&.empty?
+        pos += relpos + 1 # avoid infinite loop
+        break if pos >= length
+      else
+        yield match, line
+        pos += relpos + $&.length
+      end
+    }
+  end
+
+  def realpath
+    Pathname.new(self).realpath.to_s
+  rescue Errno::ENOENT => e
+    p e
+  end
+
+  # Dummy implementations of string encoding methods for ruby 1.8.
+  unless "".respond_to? :force_encoding
+    def force_encoding(name) self end
+    def valid_encoding?() true end
   end
 end
 

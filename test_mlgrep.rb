@@ -182,9 +182,9 @@ class TestMlgrep < Test::Unit::TestCase
     check_sorted_stdout("fsm.rb:1: class",
                         "fsm.rb:86: class",
                         "fsm.rb:90: class",
-                        "mlgrep:16: class",
-                        "mlgrep:32: class",
-                        "mlgrep:364: class")
+                        "mlgrep:274: class",
+                        "mlgrep:312: class",
+                        "mlgrep:324: class")
   end
 
   def test_skipping_strings
