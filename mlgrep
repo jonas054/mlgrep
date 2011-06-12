@@ -7,7 +7,6 @@ $:.unshift File.dirname(Pathname.new(__FILE__).realpath)
 
 require 'any_white_space'
 require 'skip_stuff' # String#without{Xml|Script|Python|Cpp}{Comments|Strings}
-require 'pathname'
 
 Parameters = Struct.new(:files_and_dirs, :normalized_args, :flags,
                         :patterns, :exclude_regexen, :regexp_to_find)
