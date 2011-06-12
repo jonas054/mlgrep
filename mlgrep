@@ -11,61 +11,11 @@ require 'pathname'
 
 def mlgrep(*args)
   catch(:exit) {
-    $match_statistics = Hash.new 0
-    $file_statistics = Hash.new 0
-    args, normalized_args, flags, patterns, exclude_regexen = parse_args args
-   
-    Doc.usage if flags[:help]
-    short_usage 'No regexp was given.' if args.empty?
-
-    # Work with duplicate of argument in case args are frozen.
-    regexp_to_find = make_regex args.shift.dup, flags
-
-    exclude_regexen << %r"\b#{regexp_to_find.source}\b" if flags[:exclude_self]
-   
-    anything_found = false
-    args = args.exclude(exclude_regexen)
-    files = args.select { |e| File.file?(e) }
-    if files.any?
-      anything_found ||= mlgrep_search_files($stdout, regexp_to_find,
-                                             files.flatten.uniq, flags)
-    end
-
-    if patterns.any?
-      # Search recursively for files if a pattern option was given.
-      require 'find'
-      dirs_to_search = args.select { |e| File.directory?(e) }
-      dirs_to_search = ['.'] if dirs_to_search.empty?
-      dirs_to_search.each { |dir|
-        Find.find dir do |f|
-          Find.prune if f =~ /\.snapshot/ or f =~ /~$/
-          Find.prune if exclude_regexen.find { |re| f =~ re }
-   
-          if File.directory? f and not File.symlink? f
-            f = f.realpath if flags[:absolute_paths]
-            files = patterns.map { |p|
-              Dir[File.join(f,p)].exclude exclude_regexen
-            }
-            files << hashbang_matches(normalized_args, f)
-            anything_found ||= mlgrep_search_files($stdout, regexp_to_find,
-                                                   files.flatten.uniq, flags)
-          end
-        end
-      }
-    elsif args.empty? or args == ['/dev/null']
-      if exclude_regexen.any?
-        short_usage "Exclusion flag (-x or -X) but no pattern flag " +
-          "(-C,-H,-J,-L,-M,-P,-S,-r) or file list"
-      end
-
-      # If no filenames were given, mlgrep is used in pipe mode. Just print
-      # the match.
-      multiline_grep "STDIN", $stdin.read, :raw, regexp_to_find, flags do
-        |line_nr, match|
-        puts match
-        anything_found = true
-      end
-    end
+    files_and_dirs, normalized_args, flags, patterns, exclude_regexen, regexp_to_find =
+      gather_parameters(args)
+    
+    anything_found = search(files_and_dirs, normalized_args, flags, patterns,
+                            exclude_regexen, regexp_to_find)
    
     print_statistics regexp_to_find if flags[:statistics]
     return anything_found ? 0 : 1
@@ -73,19 +23,69 @@ def mlgrep(*args)
   1 # We end up here because of throw :exit, so it's an error.
 end
 
-def print_statistics(regexp_to_find)
-  [ $file_statistics, $match_statistics ].each { |table|
-    table.sort.each { |key, count|
-      key = %Q{"#{key}"} if key =~ /\s+$/
-      puts "%5d %s" % [count, key]
+def gather_parameters(args)
+  args_after_options, normalized_args, flags, patterns, exclude_regexen =
+    parse_args args
+    
+  if flags[:statistics]
+    $match_statistics = Hash.new 0
+    $file_statistics  = Hash.new 0
+  end
+    
+  Doc.usage if flags[:help]
+  short_usage 'No regexp was given.' if args_after_options.empty?
+
+  # Work with duplicate of argument in case args_after_options are frozen.
+  regexp_to_find = make_regex args_after_options.shift.dup, flags
+
+  exclude_regexen << %r"\b#{regexp_to_find.source}\b" if flags[:exclude_self]
+  [args_after_options.exclude(exclude_regexen), normalized_args, flags,
+   patterns, exclude_regexen, regexp_to_find]
+end
+
+def search(files_and_dirs, normalized_args, flags, patterns, exclude_regexen,
+           regexp_to_find)
+  anything_found =
+    mlgrep_search_files($stdout, regexp_to_find,
+                        files_and_dirs.select { |e| File.file?(e) }.flatten.uniq,
+                        flags)
+
+  if patterns.any?
+    # Search recursively for files if a pattern option was given.
+    require 'find'
+    dirs_to_search = files_and_dirs.select { |e| File.directory?(e) }
+    dirs_to_search = ['.'] if dirs_to_search.empty?
+    dirs_to_search.each { |dir|
+      Find.find dir do |f|
+        Find.prune if f =~ /\.snapshot/ or f =~ /~$/
+        Find.prune if exclude_regexen.find { |re| f =~ re }
+        
+        if File.directory? f and not File.symlink? f
+          f = f.realpath if flags[:absolute_paths]
+          files = patterns.map { |p|
+            Dir[File.join(f,p)].exclude exclude_regexen
+          }
+          files << hashbang_matches(normalized_args, f)
+          anything_found ||= mlgrep_search_files($stdout, regexp_to_find,
+                                                 files.flatten.uniq, flags)
+        end
+      end
     }
-    if table.object_id == $file_statistics.object_id
-      puts "-" * 50
-    else
-      total = table.values.inject(0) { |sum, count| sum + count }
-      printf "%5d TOTAL /%s/\n", total, regexp_to_find.source
+  elsif files_and_dirs.empty? or files_and_dirs == ['/dev/null']
+    if exclude_regexen.any?
+      short_usage "Exclusion flag (-x or -X) but no pattern flag " +
+        "(-C,-H,-J,-L,-M,-P,-S,-r) or file list"
     end
-  }
+
+    # If no filenames were given, mlgrep is used in pipe mode. Just print
+    # the match.
+    $stdin.read.multiline_grep "STDIN", :raw, regexp_to_find, flags do
+      |line_nr, match|
+      puts match
+      anything_found = true
+    end
+  end
+  anything_found
 end
 
 def parse_args(args)
@@ -154,6 +154,21 @@ def parse_args(args)
   [args, normalized_args.grep(/^-/), flags, patterns, exclude_regexen]
 end
 
+def print_statistics(regexp_to_find)
+  [ $file_statistics, $match_statistics ].each { |table|
+    table.sort.each { |key, count|
+      key = %Q{"#{key}"} if key =~ /\s+$/
+      puts "%5d %s" % [count, key]
+    }
+    if table.object_id == $file_statistics.object_id
+      puts "-" * 50
+    else
+      total = table.values.inject(0) { |sum, count| sum + count }
+      printf "%5d TOTAL /%s/\n", total, regexp_to_find.source
+    end
+  }
+end
+
 def get_property(name)
   filename = in_home_dir '.mlgreprc'
   create_default_mlgreprc unless File.exist? filename
@@ -211,7 +226,7 @@ def mlgrep_search_files(output, re, names, flags = {})
     text = IO.read filename rescue text = ""
     filename = filename.realpath if flags[:absolute_paths]
 
-    multiline_grep filename, text, :strip, re, flags do |line_nr, match|
+    text.multiline_grep filename, :strip, re, flags do |line_nr, match|
       anything_found = true
       if flags[:statistics]
         $match_statistics[match] += 1
@@ -230,38 +245,6 @@ def mlgrep_search_files(output, re, names, flags = {})
     end
   }
   anything_found
-end
-
-def multiline_grep(filename, text, do_strip, re, flags)
-  encoding = $1 if text =~ /coding: ([\w-]+)/
-
-  if flags[:no_comments]
-    text = case filename
-           when /\.xml$/i
-             text.withoutXmlComments
-           when /\.(properties|rb|sh|pm|pl|py|cmake|mak)$/, /CMakeLists.txt/
-             text.withoutScriptComments
-           else if text =~ /\A#[!\s]/m
-                  text.withoutScriptComments
-                else
-                  text.withoutCppComments
-                end
-           end
-  end
-  if flags[:no_strings]
-    text = text.withoutCppStrings
-    if filename =~ /\.py$/ || text =~ /\A#.*ython/
-      text = text.withoutPythonStrings
-    end
-  end
-
-  text.match_with_line(re, filename, flags[:only_match], encoding) {
-    |match, line_nr|
-    match.gsub!(/\s+/, ' ') if do_strip == :strip
-    q = flags[:quiet]
-    match[q...-q] = ' ... ' if q and match.size > 2*q+5
-    yield line_nr, match
-  }
 end
 
 module Enumerable
@@ -322,7 +305,29 @@ class File
 end
 
 class String
-  def match_with_line(re, file_name, only_match, encoding)
+  def multiline_grep(file_name, do_strip, re, flags)
+    encoding = $1 if self =~ /coding: ([\w-]+)/
+
+    if flags[:no_comments]
+      replace case file_name
+              when /\.xml$/i
+                withoutXmlComments
+              when /\.(properties|rb|sh|pm|pl|py|cmake|mak)$/, /CMakeLists.txt/
+                withoutScriptComments
+              else if self =~ /\A#[!\s]/m
+                     withoutScriptComments
+                   else
+                     withoutCppComments
+                   end
+              end
+    end
+    if flags[:no_strings]
+      replace withoutCppStrings
+      if file_name =~ /\.py$/ || self =~ /\A#.*ython/
+        replace withoutPythonStrings
+      end
+    end
+
     pos = 0
     proper_name = {
       # These are mappings from encoding names that appear in MRI ruby source
@@ -344,13 +349,21 @@ class String
         break
       end
       line  = self[0..pos+relpos].count("\n") + 1
-      match = only_match ? "#$1 #$2 #$3 #$4 #$5 #$6 #$7 #$8 #$9".strip || $& : $&
+      match = if flags[:only_match]
+                "#$1 #$2 #$3 #$4 #$5 #$6 #$7 #$8 #$9".strip || $&
+              else
+                $&
+              end
       if $&.empty?
         pos += relpos + 1 # avoid infinite loop
         break if pos >= length
       else
-        yield match, line
-        pos += relpos + $&.length
+        match_length = $&.length
+        match.gsub!(/\s+/, ' ') if do_strip == :strip
+        q = flags[:quiet]
+        match[q...-q] = ' ... ' if q and match.size > 2*q+5
+        yield line, match
+        pos += relpos + match_length
       end
     }
   end
