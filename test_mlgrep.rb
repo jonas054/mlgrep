@@ -178,13 +178,10 @@ class TestMlgrep < Test::Unit::TestCase
   end
 
   def test_skipping_comments
-    mlgrep(*%w'-c class fsm.rb mlgrep')
+    mlgrep(*%w'-c class fsm.rb')
     check_sorted_stdout("fsm.rb:1: class",
                         "fsm.rb:86: class",
-                        "fsm.rb:90: class",
-                        "mlgrep:274: class",
-                        "mlgrep:312: class",
-                        "mlgrep:324: class")
+                        "fsm.rb:90: class")
   end
 
   def test_skipping_strings
