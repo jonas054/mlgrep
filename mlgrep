@@ -45,13 +45,11 @@ def gather_parameters(args)
 end
 
 def search(parameters)
-  anything_found =
-    mlgrep_search_files($stdout, parameters.regexp_to_find,
-                        parameters.files_and_dirs.select { |e|
-                          File.file?(e)
-                        }.flatten.uniq,
-                        parameters.flags)
-
+  anything_found = mlgrep_search_files($stdout, parameters.regexp_to_find,
+                                       parameters.files_and_dirs.select { |e|
+                                         File.file?(e)
+                                       }.flatten.uniq,
+                                       parameters.flags)
   if parameters.patterns.any?
     # Search recursively for files if a pattern option was given.
     require 'find'
