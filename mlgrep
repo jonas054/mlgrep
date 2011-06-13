@@ -10,16 +10,14 @@ $:.unshift MLGREP_HOME
 require 'any_white_space'
 require 'skip_stuff' # String#without{Xml|Script|Python|Cpp}{Comments|Strings}
 
-Parameters = Struct.new(:files_and_dirs, :normalized_args, :flags,
-                        :patterns, :exclude_regexen, :regexp_to_find)
-
 def mlgrep(*args)
   catch(:exit) {
     parameters = gather_parameters args
-
     anything_found = search parameters
 
-    print_statistics parameters.regexp_to_find if parameters.flags[:statistics]
+    if parameters[:flags][:statistics]
+      print_statistics parameters[:regexp_to_find]
+    end
     return anything_found ? 0 : 1
   }
   1 # We end up here because of throw :exit, so it's an error.
@@ -42,52 +40,56 @@ def gather_parameters(args)
 
   exclude_regexen << %r"\b#{regexp_to_find.source}\b" if flags[:exclude_self]
 
-  Parameters.new(args_after_options.exclude(exclude_regexen), normalized_args,
-                 flags, patterns, exclude_regexen, regexp_to_find)
+  { :files_and_dirs  => args_after_options.exclude(exclude_regexen),
+    :normalized_args => normalized_args,
+    :flags           => flags,
+    :patterns        => patterns,
+    :exclude_regexen => exclude_regexen,
+    :regexp_to_find  => regexp_to_find }
 end
 
 def search(parameters)
-  anything_found = mlgrep_search_files($stdout, parameters.regexp_to_find,
-                                       parameters.files_and_dirs.select { |e|
+  anything_found = mlgrep_search_files($stdout, parameters[:regexp_to_find],
+                                       parameters[:files_and_dirs].select { |e|
                                          File.file?(e)
                                        }.flatten.uniq,
-                                       parameters.flags)
-  if parameters.patterns.any?
+                                       parameters[:flags])
+  if parameters[:patterns].any?
     # Search recursively for files if a pattern option was given.
     require 'find'
-    dirs_to_search = parameters.files_and_dirs.select { |e|
+    dirs_to_search = parameters[:files_and_dirs].select { |e|
       File.directory?(e)
     }
     dirs_to_search = ['.'] if dirs_to_search.empty?
     dirs_to_search.each { |dir|
       Find.find dir do |f|
         Find.prune if f =~ /\.snapshot/ or f =~ /~$/
-        Find.prune if parameters.exclude_regexen.find { |re| f =~ re }
+        Find.prune if parameters[:exclude_regexen].find { |re| f =~ re }
 
         if File.directory? f and not File.symlink? f
-          f = f.realpath if parameters.flags[:absolute_paths]
-          files = parameters.patterns.map { |p|
-            Dir[File.join(f,p)].exclude parameters.exclude_regexen
+          f = f.realpath if parameters[:flags][:absolute_paths]
+          files = parameters[:patterns].map { |p|
+            Dir[File.join(f,p)].exclude parameters[:exclude_regexen]
           }
-          files << hashbang_matches(parameters.normalized_args, f)
+          files << hashbang_matches(parameters[:normalized_args], f)
           anything_found ||= mlgrep_search_files($stdout,
-                                                 parameters.regexp_to_find,
+                                                 parameters[:regexp_to_find],
                                                  files.flatten.uniq,
-                                                 parameters.flags)
+                                                 parameters[:flags])
         end
       end
     }
-  elsif (parameters.files_and_dirs.empty? or
-         parameters.files_and_dirs == ['/dev/null'])
-    if parameters.exclude_regexen.any?
+  elsif (parameters[:files_and_dirs].empty? or
+         parameters[:files_and_dirs] == ['/dev/null'])
+    if parameters[:exclude_regexen].any?
       Doc.short_usage "Exclusion flag (-x or -X) but no pattern flag " +
         "(-C,-H,-J,-L,-M,-P,-S,-r) or file list"
     end
 
     # If no filenames were given, mlgrep is used in pipe mode. Just print
     # the match.
-    $stdin.read.multiline_grep("STDIN", :raw, parameters.regexp_to_find,
-                               parameters.flags) do
+    $stdin.read.multiline_grep("STDIN", :raw, parameters[:regexp_to_find],
+                               parameters[:flags]) do
       |line_nr, match|
       puts match
       anything_found = true
