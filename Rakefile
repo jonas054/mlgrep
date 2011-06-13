@@ -35,4 +35,8 @@ task :cover_me do
   }
 end
 
-task :default => :test
+task :todo do
+  system './mlgrep -Ro "# (TODO:[^\n]*)(\n[ \t]*#[^\n]*)*"'
+end
+
+task :default => [:todo, :test]

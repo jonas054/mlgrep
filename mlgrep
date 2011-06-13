@@ -282,9 +282,11 @@ end
 
 def hashbang_matches(normalized_args, dir)
   interpreters = {
+    # TODO: Unify handling of these flags into a single location.
     '-P' => /python/i,
     '-R' => /ruby/i,
     '-L' => /perl/i,
+    # TODO: Find out what -S means in run-time instead of hard-coding.
     '-S' => %r'perl|python|ruby|/(ba)?sh'i
   }
   matches = []
