@@ -2,8 +2,10 @@
 
 require 'pathname'
 
+MLGREP_HOME = File.dirname Pathname.new(__FILE__).realpath
+
 # Path for any_white_space.rb, skip_stuff.rb, and (indirectly) fsm.rb
-$:.unshift File.dirname(Pathname.new(__FILE__).realpath)
+$:.unshift MLGREP_HOME
 
 require 'any_white_space'
 require 'skip_stuff' # String#without{Xml|Script|Python|Cpp}{Comments|Strings}
@@ -33,7 +35,7 @@ def gather_parameters(args)
   end
 
   Doc.usage if flags[:help]
-  short_usage 'No regexp was given.' if args_after_options.empty?
+  Doc.short_usage 'No regexp was given.' if args_after_options.empty?
 
   # Work with duplicate of argument in case args_after_options are frozen.
   regexp_to_find = make_regex args_after_options.shift.dup, flags
@@ -78,7 +80,7 @@ def search(parameters)
   elsif (parameters.files_and_dirs.empty? or
          parameters.files_and_dirs == ['/dev/null'])
     if parameters.exclude_regexen.any?
-      short_usage "Exclusion flag (-x or -X) but no pattern flag " +
+      Doc.short_usage "Exclusion flag (-x or -X) but no pattern flag " +
         "(-C,-H,-J,-L,-M,-P,-S,-r) or file list"
     end
 
@@ -128,7 +130,7 @@ def parse_args(args)
   while args.first =~ /^-/
     %w(ln lN lq lo lk).each { |combo|
       opt = args.grep %r"^-[#{combo}]"
-      short_usage "Can't combine #{opt * ' '}." if opt.size > 1
+      Doc.short_usage "Can't combine #{opt * ' '}." if opt.size > 1
     }
 
     case args.shift
@@ -149,12 +151,12 @@ def parse_args(args)
       # Flags
     when simple_flags_regex then flags[simple_flags[$&]] = true
     when /-q(\d+)?/         then flags[:quiet] = Integer($1 || 20)
-    when /.*/               then short_usage "Unknown flag: #{$&}."
+    when /.*/               then Doc.short_usage "Unknown flag: #{$&}."
     end
   end
   flags_in_args = args.grep(/^-/)
   if flags_in_args.any?
-    short_usage "Flag #{flags_in_args.first} encountered after regexp"
+    Doc.short_usage "Flag #{flags_in_args.first} encountered after regexp"
   end
   flags.freeze
   [args, normalized_args.grep(/^-/), flags, patterns, exclude_regexen]
@@ -208,7 +210,7 @@ def make_regex(re_string, flags)
 
   # Expressions like [^\n]* are ok in -n mode so we filter out negative REs.
   if flags[:line] and re_string.gsub(/\[\^.*?[^\\]\]/, '').index('\n')
-    short_usage "Don't use \\n in regexp when in line mode (-n)"
+    Doc.short_usage "Don't use \\n in regexp when in line mode (-n)"
   end
 
   re_string = "\\b(?:#{re_string})\\b" if flags[:whole_word]
@@ -261,19 +263,21 @@ module Enumerable
 end
 
 class Doc
+  README = File.join MLGREP_HOME, "README"
+
   def self.usage
-    File.open("README").readlines.each { |line|
+    File.open(README).readlines.each { |line|
       puts line.sub(/^# ?/, '') unless line =~ /#!/
     }
     throw :exit
   end
-end
 
-def short_usage(msg)
-  $stderr << msg << "\n\n" <<
-    # Extract usage information (synopsis) from README file.
-    IO.read("README")[%r"Usage.*?(?=-[^h]:)"m] << "\n"
-  throw :exit
+  def self.short_usage(msg)
+    $stderr << msg << "\n\n" <<
+      # Extract usage information (synopsis) from README file.
+      IO.read(README)[%r"Usage.*?(?=-[^h]:)"m] << "\n"
+    throw :exit
+  end
 end
 
 def hashbang_matches(normalized_args, dir)
