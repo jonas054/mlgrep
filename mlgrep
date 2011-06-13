@@ -49,19 +49,15 @@ def gather_parameters(args)
 end
 
 def search(parameters)
+  files = parameters[:files_and_dirs].select { |e| File.file? e }.flatten.uniq
   anything_found = mlgrep_search_files($stdout, parameters[:regexp_to_find],
-                                       parameters[:files_and_dirs].select { |e|
-                                         File.file?(e)
-                                       }.flatten.uniq,
-                                       parameters[:flags])
+                                       files, parameters[:flags])
   if parameters[:patterns].any?
     # Search recursively for files if a pattern option was given.
     require 'find'
-    dirs_to_search = parameters[:files_and_dirs].select { |e|
-      File.directory?(e)
-    }
-    dirs_to_search = ['.'] if dirs_to_search.empty?
-    dirs_to_search.each { |dir|
+    dirs = parameters[:files_and_dirs].select { |e| File.directory? e }
+    dirs = ['.'] if dirs.empty?
+    dirs.each { |dir|
       Find.find dir do |f|
         Find.prune if f =~ /\.snapshot/ or f =~ /~$/
         Find.prune if parameters[:exclude_regexen].find { |re| f =~ re }
@@ -89,8 +85,7 @@ def search(parameters)
     # If no filenames were given, mlgrep is used in pipe mode. Just print
     # the match.
     $stdin.read.multiline_grep("STDIN", :raw, parameters[:regexp_to_find],
-                               parameters[:flags]) do
-      |line_nr, match|
+                               parameters[:flags]) do |line_nr, match|
       puts match
       anything_found = true
     end

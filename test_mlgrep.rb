@@ -31,6 +31,18 @@ class TestUsageErrors < Test::Unit::TestCase
     $stderr.string = ''
   end
 
+  def test_unknown_flag
+    assert_equal 1, mlgrep('-g', 'abc', 'fsm.rb')
+    assert $stderr.string =~ %r"Unknown flag:"
+    $stderr.string = ''
+  end
+
+  def test_flag_after_regexp
+    assert_equal 1, mlgrep('abc', '-i', 'fsm.rb')
+    assert $stderr.string =~ %r"Flag -i encountered after regexp"
+    $stderr.string = ''
+  end
+
   def test_newline_in_line_mode
     mlgrep '-n', 'class FSM\n', 'fsm.rb'
     assert $stderr.string =~ %r"Don't use \\n in regexp when in line mode"
@@ -246,7 +258,21 @@ class TestMlgrep < Test::Unit::TestCase
     mlgrep('(class FSM)?', 'fsm.rb')
     check_stdout('fsm.rb:86: class FSM')
   end
+  
+  def test_searching_stdin
+    # Empty stdin
+    $stdin = StringIO.new
+    $stdin.string = ""
+    assert_equal 1, mlgrep('class FSM')
 
+    # File contents on stdin
+    $stdin.string = IO.read('fsm.rb')
+    assert_equal 0, mlgrep('class FSM')
+    check_stdout "class FSM"
+  ensure
+    $stdin = STDIN
+  end
+  
   private
   
   def check_stdout(*lines)
