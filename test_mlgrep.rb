@@ -2,17 +2,31 @@
 load 'mlgrep'
 require 'test/unit'
 require 'stringio'
+require 'fileutils'
 
-class TestUsageErrors < Test::Unit::TestCase
+class TestOutput < Test::Unit::TestCase
   def setup
+    $stdout = StringIO.new
     $stderr = StringIO.new
   end
 
   def teardown
+    assert_equal "", $stdout.string
     assert_equal "", $stderr.string
+    $stdout = STDOUT
     $stderr = STDERR
   end
 
+  def test_nothing
+  end
+end
+
+# These are test cases that call mlgrep with the wrong arguments.
+# Something is printed  on stderr.
+class TestUsageErrors < TestOutput
+  # The absolute minimum of arguments is to supply a regular expression and
+  # nothing more. Then mlgrep will search stdin. Test calling mlgrep with
+  # no arguments.
   def test_no_args
     assert_equal 1, mlgrep
     assert $stderr.string =~ %r"No regexp was given.*Usage:"m
@@ -50,16 +64,7 @@ class TestUsageErrors < Test::Unit::TestCase
   end
 end
 
-class TestMlgrep < Test::Unit::TestCase
-  def setup
-    $stdout = StringIO.new
-  end
-
-  def teardown
-    assert_equal "", $stdout.string
-    $stdout = STDOUT
-  end
-
+class TestMlgrep < TestOutput
   def test_help
     assert_equal 1, mlgrep('-h')
     assert $stdout.string =~ /can be compounded. I.e., -ics means -i -c -s./
