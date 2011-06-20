@@ -33,30 +33,40 @@ class TestUsageErrors < TestOutput
     $stderr.string = ''
   end
 
+  # With -X we say that we want to exclude files from the search based on the
+  # 'exclude' property in .mlgreprc, but -X requires another flag such as -S
+  # that states which files to search for in the first place.
   def test_only_X_flag
     assert_equal 1, mlgrep('-X', 'abc')
     assert $stderr.string =~ %r"Exclusion flag .* but no pattern flag"
     $stderr.string = ''
   end
 
+  # Just as the capital -X, the -x flag (which takes a regexp argument), is
+  # meaningless without a pattern flag.
   def test_only_x_flag
     assert_equal 1, mlgrep('-x', '/test/', 'abc')
     assert $stderr.string =~ %r"Exclusion flag .* but no pattern flag"
     $stderr.string = ''
   end
 
+  # Flags that are not supported should be reported.
   def test_unknown_flag
     assert_equal 1, mlgrep('-g', 'abc', 'fsm.rb')
     assert $stderr.string =~ %r"Unknown flag:"
     $stderr.string = ''
   end
 
+  # Test giving arguments in the wrong order. Flags must come before regular
+  # expression and files.
   def test_flag_after_regexp
     assert_equal 1, mlgrep('abc', '-i', 'fsm.rb')
     assert $stderr.string =~ %r"Flag -i encountered after regexp"
     $stderr.string = ''
   end
 
+  # Line mode (-n) works like the classic grep command, by searching for lines
+  # that match a regexp. Then we can't have newline characters in the regexp.
   def test_newline_in_line_mode
     mlgrep '-n', 'class FSM\n', 'fsm.rb'
     assert $stderr.string =~ %r"Don't use \\n in regexp when in line mode"
