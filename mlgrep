@@ -68,10 +68,9 @@ def search(parameters)
             Dir[File.join(f,p)].exclude parameters[:exclude_regexen]
           }
           files << hashbang_matches(parameters[:normalized_args], f)
-          anything_found ||= mlgrep_search_files($stdout,
-                                                 parameters[:regexp_to_find],
-                                                 files.flatten.uniq,
-                                                 parameters[:flags])
+          result = mlgrep_search_files($stdout, parameters[:regexp_to_find],
+                                       files.flatten.uniq, parameters[:flags])
+          anything_found ||= result
         end
       end
     }

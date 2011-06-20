@@ -287,6 +287,20 @@ class TestMlgrep < TestOutput
   ensure
     $stdin = STDIN
   end
+
+  def test_recursive_search
+    FileUtils.mkdir_p "tmp"
+    File.open("tmp/tmp.rb", 'w') { |f| f.puts "fsm = 0" }
+    mlgrep(*%w'-R -l fsm ..')
+    check_sorted_stdout("../mlgrep/test_mlgrep.rb",
+                        "../mlgrep/any_white_space.rb",
+                        "../mlgrep/mlgrep",
+                        "../mlgrep/test_fsm.rb",
+                        "../mlgrep/fsm.rb",
+                        "../mlgrep/tmp/tmp.rb")
+  ensure
+    FileUtils.rm_rf "tmp"
+  end
   
   private
   
