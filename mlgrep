@@ -298,9 +298,7 @@ def mlgrep(*args)
     if patterns.any?
       # Search recursively for files if a pattern option was given.
       require 'find'
-      dirs_to_search = args.select { |e|
-        File.directory?(e)
-      }
+      dirs_to_search = args.select { |e| File.directory? e }
       dirs_to_search = ['.'] if dirs_to_search.empty?
       dirs_to_search.each { |dir|
         Find.find dir do |f|
