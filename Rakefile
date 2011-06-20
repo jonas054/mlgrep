@@ -14,9 +14,6 @@ case default_version
 when /1\.8/ then add_if_present 'ruby1.9'
 when /1\.9/ then add_if_present 'ruby1.8'
 end
-add_if_present 'jruby'
-add_if_present 'jruby-1.5.0'
-add_if_present 'jruby-1.6.2'
 
 task :test do
   $rubies.each { |r| run_suite r }
@@ -38,4 +35,8 @@ task :cover_me do
   }
 end
 
-task :default => :test
+task :todo do
+  system './mlgrep -Ro "# (TODO:[^\n]*)(\n[ \t]*#[^\n]*)*"'
+end
+
+task :default => [:todo, :test]
