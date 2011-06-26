@@ -382,8 +382,6 @@ class String
 
   def realpath
     Pathname.new(self).realpath.to_s
-  rescue Errno::ENOENT => e
-    $stderr.puts "mlgrep: #{e}"
   end
 
   # Dummy implementations of string encoding methods for ruby 1.8.
