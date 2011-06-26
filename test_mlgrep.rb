@@ -38,7 +38,9 @@ class TestUsageErrors < TestOutput
   # that states which files to search for in the first place.
   def test_only_X_flag
     assert_equal 1, mlgrep('-X', 'abc')
-    assert $stderr.string =~ %r"Exclusion flag .* but no pattern flag"
+    regexp = ('Exclusion flag .* but no pattern flag ' +
+              '\(-C,-H,-J,-L,-M,-P,-R,-S,-r\) or file list')
+    assert $stderr.string =~ %r"#{regexp}"
     $stderr.string = ''
   end
 
