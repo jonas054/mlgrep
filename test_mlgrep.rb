@@ -171,10 +171,11 @@ class TestMlgrep < TestOutput
                         "./fsm.rb:138: $stderr")
   end
 
-  def test_searching_file_with_explicit_directory
-    mlgrep(*%w'-r fsm.rb \$\S+ non-existent/')
+  def test_explicit_directory_that_doesnt_exist
+    assert_equal 0, mlgrep(*%w'-r fsm.rb \$\S+ non-existent/')
     check_sorted_stdout("./fsm.rb:138: $DEBUG",
                         "./fsm.rb:138: $stderr")
+    check_stderr("mlgrep: No such file or directory - non-existent/\n")
   end
 
   def test_line_mode
@@ -188,13 +189,13 @@ class TestMlgrep < TestOutput
   def test_source_flag
     mlgrep(*%w'-S -x test_ withoutXmlComments')
     check_stdout("./skip_stuff.rb:9: withoutXmlComments",
-                 "./mlgrep:324: withoutXmlComments")
+                 "./mlgrep:326: withoutXmlComments")
   end
 
   def test_source_flag_when_rc_file_is_missing
     mlgrep(*%w'-f mlgreprc -S -x test_ withoutXmlComments')
     check_stdout("./skip_stuff.rb:9: withoutXmlComments",
-                 "./mlgrep:324: withoutXmlComments")
+                 "./mlgrep:326: withoutXmlComments")
   ensure
     File.unlink 'mlgreprc'
   end

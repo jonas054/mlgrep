@@ -59,7 +59,7 @@ def gather_parameters(args)
 end
 
 def search(parameters)
-  files = parameters[:files_and_dirs].select { |e| File.file? e }.flatten.uniq
+  files = parameters[:files_and_dirs].reject { |e| File.directory? e }.flatten.uniq
   anything_found = mlgrep_search_files($stdout, parameters[:regexp_to_find],
                                        files, parameters[:flags])
   if parameters[:patterns].any?
@@ -227,12 +227,14 @@ def make_regex(re_string, flags)
 end
 
 def mlgrep_search_files(output, re, names, flags = {})
-  filenames = names.select { |name|
-    File.file?(name) and not File.symlink?(name)
-  }
   anything_found = false
-  filenames.each { |filename|
-    text = IO.read filename rescue text = ""
+  names.reject { |name| File.symlink? name }.each { |filename|
+    begin
+      text = IO.read filename
+    rescue Errno::ENOENT => e
+      $stderr.puts "mlgrep: #{e}"
+      next
+    end
     filename = filename.realpath if flags[:absolute_paths]
 
     text.multiline_grep filename, :strip, re, flags do |line_nr, match|
