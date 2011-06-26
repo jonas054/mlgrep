@@ -357,7 +357,7 @@ class String
         end
         relpos = self[pos..-1] =~ re or break
       rescue ArgumentError
-        puts "Warning: #$! in #{file_name}"
+        $stderr.puts "mlgrep: Warning: #$! in #{file_name}"
         break
       end
       line  = self[0..pos+relpos].count("\n") + 1
@@ -383,7 +383,7 @@ class String
   def realpath
     Pathname.new(self).realpath.to_s
   rescue Errno::ENOENT => e
-    p e
+    $stderr.puts "mlgrep: #{e}"
   end
 
   # Dummy implementations of string encoding methods for ruby 1.8.

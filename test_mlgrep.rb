@@ -19,6 +19,13 @@ class TestOutput < Test::Unit::TestCase
 
   def test_nothing
   end
+  
+  protected
+
+  def check_stderr(expected)
+    assert_equal expected, $stderr.string
+    $stderr.string = ''
+  end
 end
 
 # These are test cases that call mlgrep with the wrong arguments.
@@ -35,6 +42,8 @@ class TestUsageErrors < TestOutput
   # 'exclude' property in .mlgreprc, but -X requires another flag such as -S
   # that states which files to search for in the first place.
   def test_only_X_flag
+    assert_equal 0, mlgrep(%w'-X class fsm.rb')
+    $stdout.string = ''
     check(Regexp.new('Exclusion flag .* but no pattern flag ' +
                      '\(-C,-H,-J,-L,-M,-P,-R,-S,-r\) or file list'),
           '-X', 'abc')
@@ -275,7 +284,7 @@ class TestMlgrep < TestOutput
     File.open(name, "w") { |f| f.puts "# -*- coding: bogus-8 -*-" }
     if RUBY_VERSION !~ /1.8/
       mlgrep '.', name
-      check_stdout "Warning: unknown encoding name - bogus-8 in testfile.txt"
+      check_stderr "mlgrep: Warning: unknown encoding name - bogus-8 in testfile.txt\n"
     end
   ensure
     File.unlink name
