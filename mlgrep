@@ -123,6 +123,7 @@ def parse_args(args)
   }.flatten
 
   args = normalized_args.dup
+  rc_file = in_home_dir '.mlgreprc' # Default. May be changed by -f.
 
   while args.first =~ /^-/
     %w(ln lN lq lo lk).each { |combo|
@@ -139,11 +140,12 @@ def parse_args(args)
     when '-M' then patterns << '{*.cmake,CMakeLists.txt}'
     when '-P' then patterns << '*.py'
     when '-R' then patterns << '*.rb'
-    when '-S' then patterns << get_property('source')
+    when '-S' then patterns << get_property('source', rc_file)
     when '-r' then patterns << args.shift
+    when '-f' then rc_file = args.shift
     when '-x' then exclude_regexen << Regexp.new(args.shift)
     when '-X'
-      re = get_property 'exclude'
+      re = get_property 'exclude', rc_file
       exclude_regexen << Regexp.new(re) unless re.empty?
       # Flags
     when simple_flags_regex then flags[simple_flags[$&]] = true
@@ -174,19 +176,18 @@ def print_statistics(regexp_to_find)
   }
 end
 
-def get_property(name)
-  filename = in_home_dir '.mlgreprc'
-  create_default_mlgreprc unless File.exist? filename
-  lines = IO.readlines(filename).grep %r"^#{name}:"
+def get_property(name, rc_file)
+  create_default_mlgreprc(rc_file) unless File.exist? rc_file
+  lines = IO.readlines(rc_file).grep %r"^#{name}:"
   case lines.size
-  when 0 then raise "No line starting with #{name}: found in #{filename}"
+  when 0 then raise "No line starting with #{name}: found in #{rc_file}"
   when 1 then lines.first.match(%r"([\"'])(.*)\1")[2]
-  else raise "Multiple entries for property #{name} found in #{filename}"
+  else raise "Multiple entries for property #{name} found in #{rc_file}"
   end
 end
 
-def create_default_mlgreprc
-  File.open(in_home_dir('.mlgreprc'), 'w') { |f|
+def create_default_mlgreprc(rc_file)
+  File.open(rc_file, 'w') { |f|
     f.puts "# Glob pattern for files to find with the -S flag."
     f.puts("source: '{*.{cc,c,cpp,hh,h,hpp,java,pl,PL,pm,pod,t,py,rb,cmake}," +
            "CMakeLists.txt}'")

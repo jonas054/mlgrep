@@ -171,7 +171,20 @@ class TestMlgrep < Test::Unit::TestCase
     mlgrep(*%w'-n withoutXmlComments skip_stuff.rb')
     check_stdout "skip_stuff.rb:9: def withoutXmlComments"
   end
+  
+  def test_source_flag
+    mlgrep(*%w'-S -x test_ withoutXmlComments')
+    check_stdout("./skip_stuff.rb:9: withoutXmlComments",
+                 "./mlgrep:324: withoutXmlComments")
+  end
 
+  def test_source_flag_when_rc_file_is_missing
+    mlgrep(*%w'-f mlgreprc -S -x test_ withoutXmlComments')
+    check_stdout("./skip_stuff.rb:9: withoutXmlComments",
+                 "./mlgrep:324: withoutXmlComments")
+  ensure
+    File.unlink 'mlgreprc'
+  end
 
   def test_only_group_match
     mlgrep(*%w'-o without(X..)Comments skip_stuff.rb')
@@ -271,6 +284,11 @@ class TestMlgrep < Test::Unit::TestCase
     check_stdout "class FSM"
   ensure
     $stdin = STDIN
+  end
+  
+  def test_file_error
+    File.open_with_error_handling('fsm.rb') { raise Errno::ENXIO, "Hej" }
+    check_stdout 'mlgrep: No such device or address - Hej'
   end
   
   private
