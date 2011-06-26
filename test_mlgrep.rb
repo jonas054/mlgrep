@@ -22,7 +22,7 @@ class TestOutput < Test::Unit::TestCase
 end
 
 # These are test cases that call mlgrep with the wrong arguments.
-# Something is printed  on stderr.
+# Something is printed on stderr.
 class TestUsageErrors < TestOutput
   # The absolute minimum of arguments is to supply a regular expression and
   # nothing more. Then mlgrep will search stdin. Test calling mlgrep with
@@ -119,7 +119,7 @@ class TestMlgrep < TestOutput
                  "fsm.rb:111: Either",
                  "fsm.rb:142: Either")
   end
- 
+
   def test_searching_one_file_for_regex
     mlgrep(*%w'\$\w+ fsm.rb')
     check_stdout("fsm.rb:138: $stderr",
@@ -186,7 +186,6 @@ class TestMlgrep < TestOutput
     mlgrep(*%w'-n withoutXmlComments skip_stuff.rb')
     check_stdout "skip_stuff.rb:9: def withoutXmlComments"
   end
-
 
   def test_only_group_match
     mlgrep(*%w'-o without(X..)Comments skip_stuff.rb')
@@ -257,7 +256,7 @@ class TestMlgrep < TestOutput
                  'fsm.rb:124: << [state, event, newState, ',
                  'fsm.rb:138: << "#@event #@state->')
   end
-  
+
   def test_bad_encoding
     name = "testfile.txt"
     File.open(name, "w") { |f| f.puts "# -*- coding: bogus-8 -*-" }
@@ -273,7 +272,7 @@ class TestMlgrep < TestOutput
     mlgrep('(class FSM)?', 'fsm.rb')
     check_stdout('fsm.rb:86: class FSM')
   end
-  
+
   def test_searching_stdin
     # Empty stdin
     $stdin = StringIO.new
@@ -301,9 +300,9 @@ class TestMlgrep < TestOutput
   ensure
     FileUtils.rm_rf "tmp"
   end
-  
+
   private
-  
+
   def check_stdout(*lines)
     check_any_stdout(lines) { |a| a }
   end
