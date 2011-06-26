@@ -184,7 +184,7 @@ class TestMlgrep < TestOutput
     mlgrep(*%w'-n withoutXmlComments skip_stuff.rb')
     check_stdout "skip_stuff.rb:9: def withoutXmlComments"
   end
-  
+
   def test_source_flag
     mlgrep(*%w'-S -x test_ withoutXmlComments')
     check_stdout("./skip_stuff.rb:9: withoutXmlComments",
@@ -298,12 +298,12 @@ class TestMlgrep < TestOutput
   ensure
     $stdin = STDIN
   end
-  
+
   def test_file_error
     File.open_with_error_handling('fsm.rb') { raise Errno::ENXIO, "Hej" }
     check_stdout 'mlgrep: No such device or address - Hej'
   end
-  
+
   def test_recursive_search
     FileUtils.mkdir_p "tmp"
     File.open("tmp/tmp.rb", 'w') { |f| f.puts "fsm = 0" }
