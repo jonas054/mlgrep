@@ -2,47 +2,73 @@
 load 'mlgrep'
 require 'test/unit'
 require 'stringio'
+require 'fileutils'
 
-class TestUsageErrors < Test::Unit::TestCase
+class TestOutput < Test::Unit::TestCase
   def setup
+    $stdout = StringIO.new
     $stderr = StringIO.new
   end
 
   def teardown
+    assert_equal "", $stdout.string
     assert_equal "", $stderr.string
+    $stdout = STDOUT
     $stderr = STDERR
   end
 
+  def test_nothing
+  end
+end
+
+# These are test cases that call mlgrep with the wrong arguments.
+# Something is printed on stderr.
+class TestUsageErrors < TestOutput
+  # The absolute minimum of arguments is to supply a regular expression and
+  # nothing more. Then mlgrep will search stdin. Test calling mlgrep with
+  # no arguments.
   def test_no_args
     assert_equal 1, mlgrep
     assert $stderr.string =~ %r"No regexp was given.*Usage:"m
     $stderr.string = ''
   end
 
+  # With -X we say that we want to exclude files from the search based on the
+  # 'exclude' property in .mlgreprc, but -X requires another flag such as -S
+  # that states which files to search for in the first place.
   def test_only_X_flag
     assert_equal 1, mlgrep('-X', 'abc')
-    assert $stderr.string =~ %r"Exclusion flag .* but no pattern flag"
+    assert $stderr.string =~ Regexp.new('Exclusion flag .* but no pattern ' +
+                                        'flag \(-C,-H,-J,-L,-M,-P,-R,-S,-r\)' +
+                                        ' or file list')
     $stderr.string = ''
   end
 
+  # Just as the capital -X, the -x flag (which takes a regexp argument), is
+  # meaningless without a pattern flag.
   def test_only_x_flag
     assert_equal 1, mlgrep('-x', '/test/', 'abc')
     assert $stderr.string =~ %r"Exclusion flag .* but no pattern flag"
     $stderr.string = ''
   end
 
+  # Flags that are not supported should be reported.
   def test_unknown_flag
     assert_equal 1, mlgrep('-g', 'abc', 'fsm.rb')
     assert $stderr.string =~ %r"Unknown flag:"
     $stderr.string = ''
   end
 
+  # Test giving arguments in the wrong order. Flags must come before regular
+  # expression and files.
   def test_flag_after_regexp
     assert_equal 1, mlgrep('abc', '-i', 'fsm.rb')
     assert $stderr.string =~ %r"Flag -i encountered after regexp"
     $stderr.string = ''
   end
 
+  # Line mode (-n) works like the classic grep command, by searching for lines
+  # that match a regexp. Then we can't have newline characters in the regexp.
   def test_newline_in_line_mode
     mlgrep '-n', 'class FSM\n', 'fsm.rb'
     assert $stderr.string =~ %r"Don't use \\n in regexp when in line mode"
@@ -50,16 +76,7 @@ class TestUsageErrors < Test::Unit::TestCase
   end
 end
 
-class TestMlgrep < Test::Unit::TestCase
-  def setup
-    $stdout = StringIO.new
-  end
-
-  def teardown
-    assert_equal "", $stdout.string
-    $stdout = STDOUT
-  end
-
+class TestMlgrep < TestOutput
   def test_help
     assert_equal 1, mlgrep('-h')
     assert $stdout.string =~ /can be compounded. I.e., -ics means -i -c -s./
@@ -104,7 +121,7 @@ class TestMlgrep < Test::Unit::TestCase
                  "fsm.rb:111: Either",
                  "fsm.rb:142: Either")
   end
- 
+
   def test_searching_one_file_for_regex
     mlgrep(*%w'\$\w+ fsm.rb')
     check_stdout("fsm.rb:138: $stderr",
@@ -255,7 +272,7 @@ class TestMlgrep < Test::Unit::TestCase
                  'fsm.rb:124: << [state, event, newState, ',
                  'fsm.rb:138: << "#@event #@state->')
   end
-  
+
   def test_bad_encoding
     name = "testfile.txt"
     File.open(name, "w") { |f| f.puts "# -*- coding: bogus-8 -*-" }
@@ -271,7 +288,7 @@ class TestMlgrep < Test::Unit::TestCase
     mlgrep('(class FSM)?', 'fsm.rb')
     check_stdout('fsm.rb:86: class FSM')
   end
-  
+
   def test_searching_stdin
     # Empty stdin
     $stdin = StringIO.new
@@ -291,8 +308,22 @@ class TestMlgrep < Test::Unit::TestCase
     check_stdout 'mlgrep: No such device or address - Hej'
   end
   
+  def test_recursive_search
+    FileUtils.mkdir_p "tmp"
+    File.open("tmp/tmp.rb", 'w') { |f| f.puts "fsm = 0" }
+    mlgrep(*%w'-R -l fsm ..')
+    check_sorted_stdout("../mlgrep/test_mlgrep.rb",
+                        "../mlgrep/any_white_space.rb",
+                        "../mlgrep/mlgrep",
+                        "../mlgrep/test_fsm.rb",
+                        "../mlgrep/fsm.rb",
+                        "../mlgrep/tmp/tmp.rb")
+  ensure
+    FileUtils.rm_rf "tmp"
+  end
+
   private
-  
+
   def check_stdout(*lines)
     check_any_stdout(lines) { |a| a }
   end

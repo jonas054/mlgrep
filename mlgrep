@@ -10,6 +10,16 @@ $:.unshift MLGREP_HOME
 require 'any_white_space'
 require 'skip_stuff' # String#without{Xml|Script|Python|Cpp}{Comments|Strings}
 
+Languages = {
+  '-P' => { :glob => '*.py',               :hashbang => /python/i },
+  '-R' => { :glob => '*.rb',               :hashbang => /ruby/i },
+  '-L' => { :glob => '*.{pl,PL,pm,pod,t}', :hashbang => /perl/i },
+  '-C' => { :glob => '*.{cc,c,cpp}'             },
+  '-H' => { :glob => '*.{hh,h,hpp}'             },
+  '-J' => { :glob => '*.java'                   },
+  '-M' => { :glob => '{*.cmake,CMakeLists.txt}' }
+}
+
 def mlgrep(*args)
   catch(:exit) {
     parameters = gather_parameters args
@@ -68,10 +78,9 @@ def search(parameters)
             Dir[File.join(f,p)].exclude parameters[:exclude_regexen]
           }
           files << hashbang_matches(parameters[:normalized_args], f)
-          anything_found ||= mlgrep_search_files($stdout,
-                                                 parameters[:regexp_to_find],
-                                                 files.flatten.uniq,
-                                                 parameters[:flags])
+          result = mlgrep_search_files($stdout, parameters[:regexp_to_find],
+                                       files.flatten.uniq, parameters[:flags])
+          anything_found ||= result
         end
       end
     }
@@ -79,7 +88,7 @@ def search(parameters)
          parameters[:files_and_dirs] == ['/dev/null'])
     if parameters[:exclude_regexen].any?
       Doc.short_usage "Exclusion flag (-x or -X) but no pattern flag " +
-        "(-C,-H,-J,-L,-M,-P,-S,-r) or file list"
+        "(" + Languages.keys.sort.join(",") + ",-S,-r) or file list"
     end
 
     # If no filenames were given, mlgrep is used in pipe mode. Just print
@@ -133,13 +142,7 @@ def parse_args(args)
 
     case args.shift
       # Files to include/exclude
-    when '-C' then patterns << '*.{cc,c,cpp}'
-    when '-H' then patterns << '*.{hh,h,hpp}'
-    when '-J' then patterns << '*.java'
-    when '-L' then patterns << '*.{pl,PL,pm,pod,t}'
-    when '-M' then patterns << '{*.cmake,CMakeLists.txt}'
-    when '-P' then patterns << '*.py'
-    when '-R' then patterns << '*.rb'
+    when /^-[CHJLMPR]$/ then patterns << Languages[$&][:glob]
     when '-S' then patterns << get_property('source', rc_file)
     when '-r' then patterns << args.shift
     when '-f' then rc_file = args.shift
@@ -279,14 +282,10 @@ class Doc
 end
 
 def hashbang_matches(normalized_args, dir)
-  interpreters = {
-    # TODO: Unify handling of these flags into a single location.
-    '-P' => /python/i,
-    '-R' => /ruby/i,
-    '-L' => /perl/i,
+  interpreters = Languages.merge(
     # TODO: Find out what -S means in run-time instead of hard-coding.
-    '-S' => %r'perl|python|ruby|/(ba)?sh'i
-  }
+    '-S' => { :hashbang => %r'perl|python|ruby|/(ba)?sh'i }
+  )
   matches = []
   suffixless = Dir["#{dir}/*"] - Dir["#{dir}/*.*"]
   suffixless.each { |s|
@@ -294,7 +293,8 @@ def hashbang_matches(normalized_args, dir)
       if not f.eof? and f.readline.force_encoding('ASCII-8BIT') =~ /^#!.*/
         line1 = $&
         normalized_args.each { |arg|
-          matches << s if line1 =~ interpreters[arg]
+          lang = interpreters[arg]
+          matches << s if lang and line1 =~ lang[:hashbang]
         }
       end
     }
