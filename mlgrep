@@ -59,31 +59,13 @@ def gather_parameters(args)
 end
 
 def search(parameters)
-  files = parameters[:files_and_dirs].reject { |e| File.directory? e }.flatten.uniq
+  files = parameters[:files_and_dirs].reject { |e|
+    File.directory? e }.flatten.uniq
   anything_found = mlgrep_search_files($stdout, parameters[:regexp_to_find],
                                        files, parameters[:flags])
   if parameters[:patterns].any?
-    # Search recursively for files if a pattern option was given.
-    require 'find'
-    dirs = parameters[:files_and_dirs].select { |e| File.directory? e }
-    dirs = ['.'] if dirs.empty?
-    dirs.each { |dir|
-      Find.find dir do |f|
-        Find.prune if f =~ /\.snapshot/ or f =~ /~$/
-        Find.prune if parameters[:exclude_regexen].find { |re| f =~ re }
-
-        if File.directory? f and not File.symlink? f
-          f = f.realpath if parameters[:flags][:absolute_paths]
-          files = parameters[:patterns].map { |p|
-            Dir[File.join(f,p)].exclude parameters[:exclude_regexen]
-          }
-          files << hashbang_matches(parameters[:normalized_args], f)
-          result = mlgrep_search_files($stdout, parameters[:regexp_to_find],
-                                       files.flatten.uniq, parameters[:flags])
-          anything_found ||= result
-        end
-      end
-    }
+    anything_found = (search_recursively_by_patterns(parameters) ||
+                      anything_found)
   elsif (parameters[:files_and_dirs].empty? or
          parameters[:files_and_dirs] == ['/dev/null'])
     if parameters[:exclude_regexen].any?
@@ -99,6 +81,33 @@ def search(parameters)
       anything_found = true
     end
   end
+  anything_found
+end
+
+def search_recursively_by_patterns(parameters)
+  require 'find'
+  dirs = parameters[:files_and_dirs].select { |e| File.directory? e }
+  dirs = ['.'] if dirs.empty?
+  anything_found = false
+  dirs.each { |dir|
+    Find.find dir do |f|
+      Find.prune if f =~ /\.snapshot/ or f =~ /~$/
+      Find.prune if parameters[:exclude_regexen].find { |re| f =~ re }
+
+      if File.directory? f and not File.symlink? f
+        f = f.realpath if parameters[:flags][:absolute_paths]
+        files = parameters[:patterns].map { |p|
+          Dir[File.join(f,p)].exclude parameters[:exclude_regexen]
+        }
+        files << hashbang_matches(parameters[:normalized_args], f)
+        anything_found = (mlgrep_search_files($stdout,
+                                              parameters[:regexp_to_find],
+                                              files.flatten.uniq,
+                                              parameters[:flags]) ||
+                          anything_found)
+      end
+    end
+  }
   anything_found
 end
 
