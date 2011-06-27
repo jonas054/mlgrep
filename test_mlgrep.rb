@@ -198,13 +198,13 @@ class TestMlgrep < TestOutput
   def test_source_flag
     mlgrep(*%w'-S -x test_ withoutXmlComments')
     check_stdout("./skip_stuff.rb:9: withoutXmlComments",
-                 "./mlgrep:335: withoutXmlComments")
+                 "./mlgrep:327: withoutXmlComments")
   end
 
   def test_source_flag_when_rc_file_is_missing
     mlgrep(*%w'-f mlgreprc -S -x test_ withoutXmlComments')
     check_stdout("./skip_stuff.rb:9: withoutXmlComments",
-                 "./mlgrep:335: withoutXmlComments")
+                 "./mlgrep:327: withoutXmlComments")
   ensure
     File.unlink 'mlgreprc'
   end

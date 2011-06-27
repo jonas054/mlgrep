@@ -22,13 +22,14 @@ Languages = {
 
 def mlgrep(*args)
   catch(:exit) {
+    $anything_found = false
     parameters = gather_parameters args
-    anything_found = search parameters
+    search parameters
 
     if parameters[:flags][:statistics]
       print_statistics parameters[:regexp_to_find]
     end
-    return anything_found ? 0 : 1
+    return $anything_found ? 0 : 1
   }
   1 # We end up here because of throw :exit, so it's an error.
 end
@@ -61,11 +62,10 @@ end
 def search(parameters)
   files = parameters[:files_and_dirs].reject { |e|
     File.directory? e }.flatten.uniq
-  anything_found = mlgrep_search_files($stdout, parameters[:regexp_to_find],
-                                       files, parameters[:flags])
+  mlgrep_search_files($stdout, parameters[:regexp_to_find], files,
+                      parameters[:flags])
   if parameters[:patterns].any?
-    anything_found = (search_recursively_by_patterns(parameters) ||
-                      anything_found)
+    search_recursively_by_patterns parameters
   elsif (parameters[:files_and_dirs].empty? or
          parameters[:files_and_dirs] == ['/dev/null'])
     if parameters[:exclude_regexen].any?
@@ -78,17 +78,15 @@ def search(parameters)
     $stdin.read.multiline_grep("STDIN", :raw, parameters[:regexp_to_find],
                                parameters[:flags]) do |line_nr, match|
       puts match
-      anything_found = true
+      $anything_found = true
     end
   end
-  anything_found
 end
 
 def search_recursively_by_patterns(parameters)
   require 'find'
   dirs = parameters[:files_and_dirs].select { |e| File.directory? e }
   dirs = ['.'] if dirs.empty?
-  anything_found = false
   dirs.each { |dir|
     Find.find dir do |f|
       Find.prune if f =~ /\.snapshot/ or f =~ /~$/
@@ -100,15 +98,11 @@ def search_recursively_by_patterns(parameters)
           Dir[File.join(f,p)].exclude parameters[:exclude_regexen]
         }
         files << hashbang_matches(parameters[:normalized_args], f)
-        anything_found = (mlgrep_search_files($stdout,
-                                              parameters[:regexp_to_find],
-                                              files.flatten.uniq,
-                                              parameters[:flags]) ||
-                          anything_found)
+        mlgrep_search_files($stdout, parameters[:regexp_to_find],
+                            files.flatten.uniq, parameters[:flags])
       end
     end
   }
-  anything_found
 end
 
 def parse_args(args)
@@ -236,7 +230,6 @@ def make_regex(re_string, flags)
 end
 
 def mlgrep_search_files(output, re, names, flags = {})
-  anything_found = false
   names.reject { |name| File.symlink? name }.each { |filename|
     begin
       text = IO.read filename
@@ -247,7 +240,7 @@ def mlgrep_search_files(output, re, names, flags = {})
     filename = filename.realpath if flags[:absolute_paths]
 
     text.multiline_grep filename, :strip, re, flags do |line_nr, match|
-      anything_found = true
+      $anything_found = true
       if flags[:statistics]
         $match_statistics[match] += 1
         $file_statistics[filename] += 1
@@ -264,7 +257,6 @@ def mlgrep_search_files(output, re, names, flags = {})
       end
     end
   }
-  anything_found
 end
 
 module Enumerable
