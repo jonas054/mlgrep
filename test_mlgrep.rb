@@ -346,3 +346,24 @@ class TestMlgrep < TestOutput
     $stdout.string = ''
   end
 end
+
+class TestMethods < Test::Unit::TestCase
+  def test_make_regexp_flags
+    check_regex %r'123'm,                '123',       {}
+    check_regex %r'123'mi,               '123',       :ignore_case => true
+    check_regex %r'^.*123.*[\n$]',       '123',       :line => true
+    check_regex %r'^.*12[^\n]*3.*[\n$]', '12[^\n]*3', :line => true
+    check_regex %r'\b(?:123)\b'm,        '123',       :whole_word => true
+  end
+
+  def test_make_regexp_special_additions
+    check_regex %r'12\s*3'm,             '12 3',      {}
+    check_regex %r'12[^3]*3'm,           '12\u3',     {}
+    check_regex %r'12[^\{]*\{'m,         '12\u\{',    {}
+    check_regex %r'12[^abc]*[abc]'m,     '12\u[abc]', {}
+  end
+
+  def check_regex(regex, string, flags)
+    assert_equal regex, make_regex(string, flags)
+  end
+end
