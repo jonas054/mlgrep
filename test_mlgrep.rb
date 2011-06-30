@@ -111,12 +111,19 @@ class TestMlgrep < TestOutput
     $stdout.string = ''
   end
 
+  # Long matches are shortened in output.
   def test_quiet_mode
+    # Default length is 20 charactes before and after "...".
     mlgrep '-q', 'class FSM.*end', 'fsm.rb'
     check_stdout "fsm.rb:86: class FSM # Represen ... e.write(s) } end end"
+
+    # Specify length.
+    mlgrep '-q10', 'class FSM.*end', 'fsm.rb'
+    check_stdout "fsm.rb:86: class FSM  ...  } end end"
   end
 
-  def test_case_insensitive
+  def test_case_sensitivity
+    # Default is case sensitive.
     mlgrep(*%w'either fsm.rb')
     check_stdout("fsm.rb:63: either",
                  "fsm.rb:88: either",
@@ -140,22 +147,23 @@ class TestMlgrep < TestOutput
   end
 
   def test_whole_word
-    mlgrep(*%w'default fsm.rb')
-    check_stdout("fsm.rb:96: default",
-                 "fsm.rb:103: default",
-                 "fsm.rb:104: default",
-                 "fsm.rb:104: default",
-                 "fsm.rb:113: default",
-                 "fsm.rb:125: default",
-                 "fsm.rb:149: default",
-                 "fsm.rb:150: default",
-                 "fsm.rb:154: default")
+    mlgrep(*%w'-nN default fsm.rb')
+    # Without the -w flag, we get a match on 'default' and 'defaultAction'.
+    check_stdout("# the default action executed for all rules that don't have their own",
+                 "def initialize(initialState, &defaultAction)",
+                 "@state, @defaultAction = initialState, defaultAction",
+                 "# Adds a state/event transition (a rule). If no block is given, the default",
+                 "action || @defaultAction || proc {}]",
+                 "# Executes the default action. Typically used from within an action when",
+                 "# you want to execute the default action plus something more.",
+                 "@defaultAction.call @event, @state, @newState")
 
-    mlgrep(*%w'-w default fsm.rb')
-    check_stdout("fsm.rb:96: default",
-                 "fsm.rb:113: default",
-                 "fsm.rb:149: default",
-                 "fsm.rb:150: default")
+    mlgrep(*%w'-wnN default fsm.rb')
+    # With the -w flag, we only match the word 'default'.
+    check_stdout("# the default action executed for all rules that don't have their own",
+                 "# Adds a state/event transition (a rule). If no block is given, the default",
+                 "# Executes the default action. Typically used from within an action when",
+                 "# you want to execute the default action plus something more.")
   end
 
   def test_exclude_self
@@ -361,11 +369,12 @@ end
 
 class TestMethods < Test::Unit::TestCase
   def test_make_regexp_flags
-    check_regex %r'123'm,                '123',       {}
-    check_regex %r'123'mi,               '123',       :ignore_case => true
-    check_regex %r'^.*123.*[\n$]',       '123',       :line => true
-    check_regex %r'^.*12[^\n]*3.*[\n$]', '12[^\n]*3', :line => true
-    check_regex %r'\b(?:123)\b'm,        '123',       :whole_word => true
+    check_regex %r'123'm,                  '123',       {}
+    check_regex %r'123'mi,                 '123',       :ignore_case => true
+    check_regex %r'^.*123.*[\n$]',         '123',       :line => true
+    check_regex %r'^.*12[^\n]*3.*[\n$]',   '12[^\n]*3', :line => true
+    check_regex %r'\b(?:123)\b'm,          '123',       :whole_word => true
+    check_regex %r'^.*\b(?:123)\b.*[\n$]', '123',       :line => true, :whole_word => true
   end
 
   def test_make_regexp_special_additions
