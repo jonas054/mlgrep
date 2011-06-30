@@ -88,6 +88,8 @@ class TestMlgrep < TestOutput
     $stdout.string = ''
   end
 
+  # This is the same as unix grep. When nothing is found as error code is
+  # returned.
   def test_return_value_when_nothing_is_found
     assert_equal 1, mlgrep(*%w'xyz123 fsm.rb')
     assert_equal 1, mlgrep(*%w'-k xyz123 fsm.rb')
@@ -95,11 +97,14 @@ class TestMlgrep < TestOutput
                  "    0 TOTAL /xyz123/")
   end
 
+  # Basic functionality. File name is given as argument so no search for files.
   def test_searching_one_file_for_string
     assert_equal 0, mlgrep('class FSM', 'fsm.rb')
     check_stdout "fsm.rb:86: class FSM"
   end
 
+  # Default is to print relative paths. With -a flag, the absolute path is
+  # printed.
   def test_absolute_paths
     mlgrep '-a', 'class FSM', 'fsm.rb'
     assert $stdout.string =~ %r'^/'
@@ -117,6 +122,7 @@ class TestMlgrep < TestOutput
                  "fsm.rb:88: either",
                  "fsm.rb:111: either")
 
+    # Case insensitive with -i flag.
     mlgrep(*%w'-i either fsm.rb')
     check_stdout("fsm.rb:63: either",
                  "fsm.rb:88: either",
