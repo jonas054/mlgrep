@@ -207,6 +207,12 @@ class TestMlgrep < TestOutput
                  "./mlgrep:327: withoutXmlComments")
   end
 
+  def test_source_flag_with_explicit_directory
+    mlgrep(*%w'-S -x test_ withoutXmlComments ./')
+    check_stdout("./skip_stuff.rb:9: withoutXmlComments",
+                 "./mlgrep:327: withoutXmlComments")
+  end
+
   def test_source_flag_when_rc_file_is_missing
     mlgrep(*%w'-f mlgreprc -S -x test_ withoutXmlComments')
     check_stdout("./skip_stuff.rb:9: withoutXmlComments",

@@ -290,7 +290,7 @@ def hashbang_matches(normalized_args, dir)
     '-S' => { :hashbang => %r'perl|python|ruby|/(ba)?sh'i }
   )
   matches = []
-  suffixless = Dir["#{dir}/*"] - Dir["#{dir}/*.*"]
+  suffixless = Dir[File.join(dir,'*')] - Dir[File.join(dir,'*.*')]
   suffixless.each { |s|
     File.open_with_error_handling(s) { |f|
       if not f.eof? and f.readline.force_encoding('ASCII-8BIT') =~ /^#!.*/
