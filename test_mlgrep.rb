@@ -212,19 +212,19 @@ class TestMlgrep < TestOutput
   def test_source_flag
     mlgrep(*%w'-S -x test_ withoutXmlComments')
     check_stdout("./skip_stuff.rb:9: withoutXmlComments",
-                 "./mlgrep:327: withoutXmlComments")
+                 "./mlgrep:332: withoutXmlComments")
   end
 
   def test_source_flag_with_explicit_directory
     mlgrep(*%w'-S -x test_ withoutXmlComments ./')
     check_stdout("./skip_stuff.rb:9: withoutXmlComments",
-                 "./mlgrep:327: withoutXmlComments")
+                 "./mlgrep:332: withoutXmlComments")
   end
 
   def test_source_flag_when_rc_file_is_missing
     mlgrep(*%w'-f mlgreprc -S -x test_ withoutXmlComments')
     check_stdout("./skip_stuff.rb:9: withoutXmlComments",
-                 "./mlgrep:327: withoutXmlComments")
+                 "./mlgrep:332: withoutXmlComments")
   ensure
     File.unlink 'mlgreprc'
   end
@@ -243,6 +243,21 @@ class TestMlgrep < TestOutput
                  "    1 Fil",
                  "    1 Fol",
                  "   26 TOTAL /F../")
+  end
+
+  def test_statistics_with_stdin
+    $stdin = StringIO.new
+    $stdin.string = IO.read 'fsm.rb'
+    assert_equal 0, mlgrep(*%w'-k F..')
+    check_stdout("   26 STDIN",
+                 "--------------------------------------------------",
+                 "   23 FSM",
+                 "    1 Fee",
+                 "    1 Fil",
+                 "    1 Fol",
+                 "   26 TOTAL /F../")
+  ensure
+    $stdin = STDIN
   end
 
   def test_skipping_comments

@@ -77,8 +77,13 @@ def search(parameters)
     # the match.
     $stdin.read.multiline_grep("STDIN", :raw, parameters[:regexp_to_find],
                                parameters[:flags]) do |line_nr, match|
-      puts match
       $anything_found = true
+      if parameters[:flags][:statistics]
+        $match_statistics[match] += 1
+        $file_statistics["STDIN"] += 1
+      else
+        puts match
+      end
     end
   end
 end
