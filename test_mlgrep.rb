@@ -19,7 +19,7 @@ class TestOutput < Test::Unit::TestCase
 
   def test_nothing
   end
-  
+
   protected
 
   def check_stderr(expected)
@@ -370,19 +370,60 @@ class TestMlgrep < TestOutput
 
   def test_recursive_search
     FileUtils.mkdir_p "tmp"
-    File.open("tmp/tmp.rb", 'w') { |f| f.puts "fsm = 0" }
-    mlgrep(*%w'-R -l fsm ..')
-    check_sorted_stdout("../mlgrep/test_mlgrep.rb",
-                        "../mlgrep/any_white_space.rb",
-                        "../mlgrep/mlgrep",
-                        "../mlgrep/test_fsm.rb",
-                        "../mlgrep/fsm.rb",
-                        "../mlgrep/tmp/tmp.rb")
+    check_tmp_file('tmp/tmp.rb',
+                   ['fsm = 0'],
+                   ['-Rl', 'fsm', '..'],
+                   ["../mlgrep/test_mlgrep.rb",
+                    "../mlgrep/any_white_space.rb",
+                    "../mlgrep/mlgrep",
+                    "../mlgrep/test_fsm.rb",
+                    "../mlgrep/fsm.rb",
+                    "../mlgrep/tmp/tmp.rb",
+                    'tmp/tmp.rb'])
   ensure
     FileUtils.rm_rf "tmp"
   end
 
+  def test_skipping_comments_in_xml_file
+    check_tmp_file('tmp.xml',
+                   ['<?xml version="1.0" encoding="ISO-8859-1"?>',
+                    '<! foo>',
+                    '<foo>',
+                    '</foo>'],
+                   ['-nNc', 'foo'],
+                   ["<foo>", "</foo>"])
+  end
+
+  def test_skipping_comments_in_hashbang_file
+    check_tmp_file('tmp',
+                   ['#!/bin/sh',
+                    'echo foo',
+                    '# foo bar'],
+                   ['-nNc', 'foo'],
+                   ["echo foo"])
+  end
+
+  def test_skipping_comments_in_cpp_file
+    check_tmp_file('tmp.cpp',
+                   ['int main() {',
+                    '  // foo',
+                    '  foo(); /* foo */',
+                    '}'],
+                   ['-nNc', 'foo'],
+                   ["foo();"])
+  end
+
   private
+
+  def check_tmp_file(file_name, contents, options, expected)
+    File.open(file_name, 'w') { |f|
+      contents.each { |line| f.puts line }
+    }
+    mlgrep *options + [file_name]
+    check_sorted_stdout *expected
+  ensure
+    File.unlink file_name
+  end
 
   def check_stdout(*lines)
     check_any_stdout(lines) { |a| a }
