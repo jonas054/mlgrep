@@ -368,6 +368,18 @@ class TestMlgrep < TestOutput
     check_stdout 'mlgrep: No such device or address - Hej'
   end
 
+  def test_skipping_python_strings
+    check_tmp_file('tmp.py',
+                   ['foo1 = "foo"',
+                    "foo2 = 'foo'",
+                    '"""',
+                    'foo',
+                    '"""'],
+                   ['-nNs', 'foo'],
+                   ["foo1 =",
+                    "foo2 ="])
+  end
+
   def test_recursive_search
     FileUtils.mkdir_p "tmp"
     check_tmp_file('tmp/tmp.rb',
