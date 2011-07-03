@@ -23,8 +23,13 @@ Languages = {
 def mlgrep(*args)
   catch(:exit) {
     $anything_found = false
-    parameters = gather_parameters args
-    search parameters
+    begin
+      parameters = gather_parameters args
+      search parameters
+    rescue RuntimeError => e
+      $stderr.puts e.message
+      return 1
+    end
 
     if parameters[:flags][:statistics]
       print_statistics parameters[:regexp_to_find]

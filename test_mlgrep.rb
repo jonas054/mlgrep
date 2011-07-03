@@ -74,6 +74,25 @@ class TestUsageErrors < TestOutput
           '-n', 'class FSM\n', 'fsm.rb')
   end
 
+  def test_mlgreprc_with_no_source_property
+    File.open('mlgreprc', 'w') {}
+    check(%r"No line starting with source: found in mlgreprc",
+          '-f', 'mlgreprc', '-Sl', '.')
+  ensure
+    File.unlink 'mlgreprc'
+  end
+
+  def test_mlgreprc_with_double_source_property
+    File.open('mlgreprc', 'w') { |f|
+      f.puts 'source: *.c'
+      f.puts 'source: *.java'
+    }
+    check(%r"Multiple entries for property source found in mlgreprc",
+          '-f', 'mlgreprc', '-Sl', '.')
+  ensure
+    File.unlink 'mlgreprc'
+  end
+
   def check(regexp, *args)
     assert_equal 1, mlgrep(*args)
     assert $stderr.string =~ regexp
@@ -212,19 +231,19 @@ class TestMlgrep < TestOutput
   def test_source_flag
     mlgrep(*%w'-S -x test_ withoutXmlComments')
     check_stdout("./skip_stuff.rb:9: withoutXmlComments",
-                 "./mlgrep:332: withoutXmlComments")
+                 "./mlgrep:337: withoutXmlComments")
   end
 
   def test_source_flag_with_explicit_directory
     mlgrep(*%w'-S -x test_ withoutXmlComments ./')
     check_stdout("./skip_stuff.rb:9: withoutXmlComments",
-                 "./mlgrep:332: withoutXmlComments")
+                 "./mlgrep:337: withoutXmlComments")
   end
 
   def test_source_flag_when_rc_file_is_missing
     mlgrep(*%w'-f mlgreprc -S -x test_ withoutXmlComments')
     check_stdout("./skip_stuff.rb:9: withoutXmlComments",
-                 "./mlgrep:332: withoutXmlComments")
+                 "./mlgrep:337: withoutXmlComments")
   ensure
     File.unlink 'mlgreprc'
   end
