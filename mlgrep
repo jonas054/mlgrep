@@ -145,7 +145,8 @@ def parse_args(args)
   }.flatten
 
   args = normalized_args.dup
-  rc_file = in_home_dir '.mlgreprc' # Default. May be changed by -f.
+  # Default mlgreprc file. May be changed by -f.
+  rc_file = File.join(ENV['HOME'] || ENV['HOMEDRIVE'], '.mlgreprc')
 
   while args.first =~ /^-/
     %w(ln lN lq lo lk).each { |combo|
@@ -211,10 +212,6 @@ def create_default_mlgreprc(rc_file)
            "the -X flag.")
     f.puts "exclude: '.svn/'"
   }
-end
-
-def in_home_dir(rel_path)
-  File.join(ENV['HOME'] || ENV['HOMEDRIVE'], rel_path)
 end
 
 def make_regex(re_string, flags)
