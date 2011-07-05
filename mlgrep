@@ -179,17 +179,17 @@ def parse_args(args)
 end
 
 def print_statistics(regexp_to_find)
-  [ $file_statistics, $match_statistics ].each { |table|
-    table.sort.each { |key, count|
-      key = %Q{"#{key}"} if key =~ /\s+$/
-      puts "%5d %s" % [count, key]
-    }
-    if table.object_id == $file_statistics.object_id
-      puts "-" * 50
-    else
-      total = table.values.inject(0) { |sum, count| sum + count }
-      printf "%5d TOTAL /%s/\n", total, regexp_to_find.source
-    end
+  print_table $file_statistics
+  puts "-" * 50
+  print_table $match_statistics
+  total = $match_statistics.values.inject(0) { |sum, count| sum + count }
+  printf "%5d TOTAL /%s/\n", total, regexp_to_find.source
+end
+
+def print_table(table)
+  table.sort.each { |key, count|
+    key = %Q{"#{key}"} if key =~ /\s+$/
+    puts "%5d %s" % [count, key]
   }
 end
 
