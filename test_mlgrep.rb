@@ -264,6 +264,15 @@ class TestMlgrep < TestOutput
                  "   26 TOTAL /F../")
   end
 
+  def test_statistics_ending_with_space
+    assert_equal 0, mlgrep(*%w'-k .E. skip_stuff.rb')
+    check_stdout('    5 skip_stuff.rb',
+                 '--------------------------------------------------',
+                 '    2 "RE "',
+                 '    3 RE,',
+                 '    5 TOTAL /.E./')
+  end
+
   def test_statistics_with_stdin
     $stdin = StringIO.new
     $stdin.string = IO.read 'fsm.rb'
