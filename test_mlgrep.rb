@@ -6,6 +6,7 @@ require 'fileutils'
 
 class TestOutput < Test::Unit::TestCase
   def setup
+    $stdin  = StringIO.new
     $stdout = StringIO.new
     $stderr = StringIO.new
   end
@@ -13,6 +14,7 @@ class TestOutput < Test::Unit::TestCase
   def teardown
     assert_equal "", $stdout.string
     assert_equal "", $stderr.string
+    $stdin  = STDIN
     $stdout = STDOUT
     $stderr = STDERR
   end
@@ -274,8 +276,7 @@ class TestMlgrep < TestOutput
   end
 
   def test_statistics_with_stdin
-    $stdin = StringIO.new
-    $stdin.string = IO.read 'fsm.rb'
+    $stdin.string = IO.read('fsm.rb')
     assert_equal 0, mlgrep(*%w'-k F..')
     check_stdout("   26 STDIN",
                  "--------------------------------------------------",
@@ -284,8 +285,6 @@ class TestMlgrep < TestOutput
                  "    1 Fil",
                  "    1 Fol",
                  "   26 TOTAL /F../")
-  ensure
-    $stdin = STDIN
   end
 
   def test_skipping_comments
@@ -360,16 +359,13 @@ class TestMlgrep < TestOutput
 
   def test_searching_stdin
     # Empty stdin
-    $stdin = StringIO.new
     $stdin.string = ""
     assert_equal 1, mlgrep('class FSM')
 
     # File contents on stdin
-    $stdin.string = IO.read('fsm.rb')
+    $stdin.string = IO.read 'fsm.rb'
     assert_equal 0, mlgrep('class FSM')
     check_stdout "class FSM"
-  ensure
-    $stdin = STDIN
   end
 
   def test_file_error
