@@ -145,13 +145,13 @@ class TestMlgrep < TestOutput
 
   def test_case_sensitivity
     # Default is case sensitive.
-    mlgrep(*%w'either fsm.rb')
+    mlgrep *%w'either fsm.rb'
     check_stdout("fsm.rb:63: either",
                  "fsm.rb:88: either",
                  "fsm.rb:111: either")
 
     # Case insensitive with -i flag.
-    mlgrep(*%w'-i either fsm.rb')
+    mlgrep *%w'-i either fsm.rb'
     check_stdout("fsm.rb:63: either",
                  "fsm.rb:88: either",
                  "fsm.rb:90: Either",
@@ -162,13 +162,13 @@ class TestMlgrep < TestOutput
   end
 
   def test_searching_one_file_for_regex
-    mlgrep(*%w'\$\w+ fsm.rb')
+    mlgrep *%w'\$\w+ fsm.rb'
     check_stdout("fsm.rb:138: $stderr",
                  "fsm.rb:138: $DEBUG")
   end
 
   def test_whole_word
-    mlgrep(*%w'-nN default fsm.rb')
+    mlgrep *%w'-nN default fsm.rb'
     # Without the -w flag, we get a match on 'default' and 'defaultAction'.
     check_stdout("# the default action executed for all rules that don't have their own",
                  "def initialize(initialState, &defaultAction)",
@@ -179,7 +179,7 @@ class TestMlgrep < TestOutput
                  "# you want to execute the default action plus something more.",
                  "@defaultAction.call @event, @state, @newState")
 
-    mlgrep(*%w'-wnN default fsm.rb')
+    mlgrep *%w'-wnN default fsm.rb'
     # With the -w flag, we only match the word 'default'.
     check_stdout("# the default action executed for all rules that don't have their own",
                  "# Adds a state/event transition (a rule). If no block is given, the default",
@@ -188,7 +188,7 @@ class TestMlgrep < TestOutput
   end
 
   def test_exclude_self
-    mlgrep(*%w'-R -l fsm')
+    mlgrep *%w'-R -l fsm'
     check_sorted_stdout("./test_mlgrep.rb",
                         "./any_white_space.rb",
                         "./mlgrep",
@@ -196,7 +196,7 @@ class TestMlgrep < TestOutput
                         "./fsm.rb")
 
     # fsm.rb is excluded but not test_fsm.rb.
-    mlgrep(*%w'-Re -l fsm')
+    mlgrep *%w'-Re -l fsm'
     check_sorted_stdout("./test_mlgrep.rb",
                         "./mlgrep",
                         "./any_white_space.rb",
@@ -204,13 +204,13 @@ class TestMlgrep < TestOutput
   end
 
   def test_searching_two_files_for_regex
-    mlgrep(*%w'\$\w+ fsm.rb any_white_space.rb')
+    mlgrep *%w'\$\w+ fsm.rb any_white_space.rb'
     check_stdout("fsm.rb:138: $stderr",
                  "fsm.rb:138: $DEBUG")
   end
 
   def test_searching_all_ruby_files_for_regex_excluding_test_files
-    mlgrep(*%w'-x test_ -r *.rb \$\S+')
+    mlgrep *%w'-x test_ -r *.rb \$\S+'
     check_sorted_stdout("./fsm.rb:138: $DEBUG",
                         "./fsm.rb:138: $stderr")
   end
@@ -219,31 +219,31 @@ class TestMlgrep < TestOutput
     assert_equal 0, mlgrep(*%w'-r fsm.rb \$\S+ non-existent/')
     check_sorted_stdout("./fsm.rb:138: $DEBUG",
                         "./fsm.rb:138: $stderr")
-    check_stderr("mlgrep: No such file or directory - non-existent/\n")
+    check_stderr "mlgrep: No such file or directory - non-existent/\n"
   end
 
   def test_line_mode
-    mlgrep(*%w'withoutXmlComments skip_stuff.rb')
+    mlgrep *%w'withoutXmlComments skip_stuff.rb'
     check_stdout "skip_stuff.rb:9: withoutXmlComments"
 
-    mlgrep(*%w'-n withoutXmlComments skip_stuff.rb')
+    mlgrep *%w'-n withoutXmlComments skip_stuff.rb'
     check_stdout "skip_stuff.rb:9: def withoutXmlComments"
   end
 
   def test_source_flag
-    mlgrep(*%w'-S -x test_ withoutXmlComments')
+    mlgrep *%w'-S -x test_ withoutXmlComments'
     check_stdout("./skip_stuff.rb:9: withoutXmlComments",
                  "./mlgrep:334: withoutXmlComments")
   end
 
   def test_source_flag_with_explicit_directory
-    mlgrep(*%w'-S -x test_ withoutXmlComments ./')
+    mlgrep *%w'-S -x test_ withoutXmlComments ./'
     check_stdout("./skip_stuff.rb:9: withoutXmlComments",
                  "./mlgrep:334: withoutXmlComments")
   end
 
   def test_source_flag_when_rc_file_is_missing
-    mlgrep(*%w'-f mlgreprc -S -x test_ withoutXmlComments')
+    mlgrep *%w'-f mlgreprc -S -x test_ withoutXmlComments'
     check_stdout("./skip_stuff.rb:9: withoutXmlComments",
                  "./mlgrep:334: withoutXmlComments")
   ensure
@@ -251,7 +251,7 @@ class TestMlgrep < TestOutput
   end
 
   def test_only_group_match
-    mlgrep(*%w'-o without(X..)Comments skip_stuff.rb')
+    mlgrep *%w'-o without(X..)Comments skip_stuff.rb'
     check_stdout "skip_stuff.rb:9: Xml"
   end
 
@@ -276,7 +276,7 @@ class TestMlgrep < TestOutput
   end
 
   def test_statistics_with_stdin
-    $stdin.string = IO.read('fsm.rb')
+    $stdin.string = IO.read 'fsm.rb'
     assert_equal 0, mlgrep(*%w'-k F..')
     check_stdout("   26 STDIN",
                  "--------------------------------------------------",
@@ -288,14 +288,14 @@ class TestMlgrep < TestOutput
   end
 
   def test_skipping_comments
-    mlgrep(*%w'-c class fsm.rb')
+    mlgrep *%w'-c class fsm.rb'
     check_sorted_stdout("fsm.rb:1: class",
                         "fsm.rb:86: class",
                         "fsm.rb:90: class")
   end
 
   def test_skipping_strings
-    mlgrep(*%w'name fsm.rb')
+    mlgrep *%w'name fsm.rb'
     check_stdout("fsm.rb:8: name",
                  "fsm.rb:11: name",
                  "fsm.rb:13: name",
@@ -307,7 +307,7 @@ class TestMlgrep < TestOutput
                  "fsm.rb:62: name",
                  "fsm.rb:71: name")
 
-    mlgrep(*%w'-s name fsm.rb')
+    mlgrep *%w'-s name fsm.rb'
     check_stdout("fsm.rb:8: name",
                  "fsm.rb:11: name",
                  "fsm.rb:13: name",
@@ -326,7 +326,7 @@ class TestMlgrep < TestOutput
   end
 
   def test_until_in_regexp
-    mlgrep(*%w'<\u[>\n] fsm.rb')
+    mlgrep *%w'<\u[>\n] fsm.rb'
     check_stdout('fsm.rb:15: <#{name}>',
                  'fsm.rb:37: <tt>',
                  'fsm.rb:37: </tt>',
@@ -353,8 +353,8 @@ class TestMlgrep < TestOutput
   end
 
   def test_zero_length_match
-    mlgrep('(class FSM)?', 'fsm.rb')
-    check_stdout('fsm.rb:86: class FSM')
+    mlgrep '(class FSM)?', 'fsm.rb'
+    check_stdout 'fsm.rb:86: class FSM'
   end
 
   def test_searching_stdin
