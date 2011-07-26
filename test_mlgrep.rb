@@ -109,7 +109,7 @@ class TestMlgrep < TestOutput
     $stdout.string = ''
   end
 
-  # This is the same as unix grep. When nothing is found as error code is
+  # This is the same as unix grep. When nothing is found an error code is
   # returned.
   def test_return_value_when_nothing_is_found
     assert_equal 1, mlgrep(*%w'xyz123 fsm.rb')
