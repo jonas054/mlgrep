@@ -233,19 +233,19 @@ class TestMlgrep < TestOutput
   def test_source_flag
     mlgrep *%w'-S -x test_ withoutXmlComments'
     check_stdout("./skip_stuff.rb:9: withoutXmlComments",
-                 "./mlgrep:334: withoutXmlComments")
+                 "./mlgrep:340: withoutXmlComments")
   end
 
   def test_source_flag_with_explicit_directory
     mlgrep *%w'-S -x test_ withoutXmlComments ./'
     check_stdout("./skip_stuff.rb:9: withoutXmlComments",
-                 "./mlgrep:334: withoutXmlComments")
+                 "./mlgrep:340: withoutXmlComments")
   end
 
   def test_source_flag_when_rc_file_is_missing
     mlgrep *%w'-f mlgreprc -S -x test_ withoutXmlComments'
     check_stdout("./skip_stuff.rb:9: withoutXmlComments",
-                 "./mlgrep:334: withoutXmlComments")
+                 "./mlgrep:340: withoutXmlComments")
   ensure
     File.unlink 'mlgreprc'
   end
@@ -396,6 +396,24 @@ class TestMlgrep < TestOutput
                     "../mlgrep/test_fsm.rb",
                     "../mlgrep/fsm.rb",
                     "../mlgrep/tmp/tmp.rb",
+                    'tmp/tmp.rb'])
+  ensure
+    FileUtils.rm_rf "tmp"
+  end
+
+  # There was a bug affecting recursive searches where the pattern could match
+  # directories.
+  def test_recursive_search_asterisk
+    FileUtils.mkdir_p "tmp"
+    check_tmp_file('tmp/tmp.rb',
+                   ['fsm = 0'],
+                   %w'-x coverage|\.git -lr * fsm .',
+                   ["./test_mlgrep.rb",
+                    "./any_white_space.rb",
+                    "./mlgrep",
+                    "./test_fsm.rb",
+                    "./fsm.rb",
+                    "./tmp/tmp.rb",
                     'tmp/tmp.rb'])
   ensure
     FileUtils.rm_rf "tmp"

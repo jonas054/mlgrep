@@ -105,7 +105,8 @@ def search_recursively_by_patterns(parameters)
       if File.directory? f and not File.symlink? f
         f = f.realpath if parameters[:flags][:absolute_paths]
         files = parameters[:patterns].map { |p|
-          Dir[File.join(f,p)].exclude parameters[:exclude_regexen]
+          all = Dir[File.join(f,p)].exclude parameters[:exclude_regexen]
+          all.reject { |e| File.directory? e }
         }
         files << hashbang_matches(parameters[:normalized_args], f)
         mlgrep_search_files($stdout, parameters[:regexp_to_find],
@@ -326,7 +327,12 @@ end
 
 class String
   def multiline_grep(file_name, do_strip, re, flags)
-    encoding = $1 if self =~ /coding: ([\w-]+)/
+    begin
+      encoding = $1 if self =~ /coding: ([\w-]+)/
+    rescue ArgumentError => e
+      $stderr.puts "mlgrep: #{e} in #{file_name}"
+      return
+    end
 
     if flags[:no_comments]
       replace case file_name
