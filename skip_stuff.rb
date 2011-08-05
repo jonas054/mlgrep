@@ -2,7 +2,7 @@ class String
     CPP_RE =
         %r'"(?:\\.|[^\\"])*"|\'.*?[^\\]?\'|//[^\n]*|/\*(?m:.*?)\*/|[^"\'/]+|.'
 
-    PYTHON_RE = /['"]{3}.*?['"]{3}|'[^']*'|\s+|[^"'\s]*|./m
+    PYTHON_RE = /['"]{3}.*?['"]{3}|'[^']*'|"[^"]*"|\s+|[^"'\s]*|./m
 
     # Returns a string that is the same as the original, except that all
     # angle-bracket-exclamaton-point comments are removed. Newlines are preserved.
@@ -38,7 +38,7 @@ class String
 
     def withoutPythonStrings
         replaceStuff PYTHON_RE, /\A["'].*/ do |x|
-            ''
+            x.gsub /[^\n'"]/, ''
         end
     end
     private

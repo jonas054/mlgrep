@@ -348,9 +348,10 @@ class String
               end
     end
     if flags[:no_strings]
-      replace withoutCppStrings
       if file_name =~ /\.py$/ || self =~ /\A#.*ython/
         replace withoutPythonStrings
+      else
+        replace withoutCppStrings
       end
     end
 
