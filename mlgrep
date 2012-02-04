@@ -240,7 +240,7 @@ def make_regex(re_string, flags)
 end
 
 def mlgrep_search_files(output, re, names, flags = {})
-  names.reject { |name| File.symlink? name }.each { |filename|
+  names.reject { |name| File.symlink? name or File.directory? name }.each { |filename|
     begin
       text = IO.read filename
     rescue Errno::ENOENT => e
