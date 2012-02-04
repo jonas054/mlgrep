@@ -6,6 +6,7 @@ require 'fileutils'
 
 class TestOutput < Test::Unit::TestCase
   def setup
+    $stdin  = StringIO.new
     $stdout = StringIO.new
     $stderr = StringIO.new
   end
@@ -13,6 +14,7 @@ class TestOutput < Test::Unit::TestCase
   def teardown
     assert_equal "", $stdout.string
     assert_equal "", $stderr.string
+    $stdin  = STDIN
     $stdout = STDOUT
     $stderr = STDERR
   end
@@ -107,7 +109,7 @@ class TestMlgrep < TestOutput
     $stdout.string = ''
   end
 
-  # This is the same as unix grep. When nothing is found as error code is
+  # This is the same as unix grep. When nothing is found an error code is
   # returned.
   def test_return_value_when_nothing_is_found
     assert_equal 1, mlgrep(*%w'xyz123 fsm.rb')
@@ -143,13 +145,13 @@ class TestMlgrep < TestOutput
 
   def test_case_sensitivity
     # Default is case sensitive.
-    mlgrep(*%w'either fsm.rb')
+    mlgrep *%w'either fsm.rb'
     check_stdout("fsm.rb:63: either",
                  "fsm.rb:88: either",
                  "fsm.rb:111: either")
 
     # Case insensitive with -i flag.
-    mlgrep(*%w'-i either fsm.rb')
+    mlgrep *%w'-i either fsm.rb'
     check_stdout("fsm.rb:63: either",
                  "fsm.rb:88: either",
                  "fsm.rb:90: Either",
@@ -160,13 +162,13 @@ class TestMlgrep < TestOutput
   end
 
   def test_searching_one_file_for_regex
-    mlgrep(*%w'\$\w+ fsm.rb')
+    mlgrep *%w'\$\w+ fsm.rb'
     check_stdout("fsm.rb:138: $stderr",
                  "fsm.rb:138: $DEBUG")
   end
 
   def test_whole_word
-    mlgrep(*%w'-nN default fsm.rb')
+    mlgrep *%w'-nN default fsm.rb'
     # Without the -w flag, we get a match on 'default' and 'defaultAction'.
     check_stdout("# the default action executed for all rules that don't have their own",
                  "def initialize(initialState, &defaultAction)",
@@ -177,7 +179,7 @@ class TestMlgrep < TestOutput
                  "# you want to execute the default action plus something more.",
                  "@defaultAction.call @event, @state, @newState")
 
-    mlgrep(*%w'-wnN default fsm.rb')
+    mlgrep *%w'-wnN default fsm.rb'
     # With the -w flag, we only match the word 'default'.
     check_stdout("# the default action executed for all rules that don't have their own",
                  "# Adds a state/event transition (a rule). If no block is given, the default",
@@ -186,7 +188,7 @@ class TestMlgrep < TestOutput
   end
 
   def test_exclude_self
-    mlgrep(*%w'-R -l fsm')
+    mlgrep *%w'-R -l fsm'
     check_sorted_stdout("./test_mlgrep.rb",
                         "./any_white_space.rb",
                         "./mlgrep",
@@ -194,7 +196,7 @@ class TestMlgrep < TestOutput
                         "./fsm.rb")
 
     # fsm.rb is excluded but not test_fsm.rb.
-    mlgrep(*%w'-Re -l fsm')
+    mlgrep *%w'-Re -l fsm'
     check_sorted_stdout("./test_mlgrep.rb",
                         "./mlgrep",
                         "./any_white_space.rb",
@@ -202,13 +204,13 @@ class TestMlgrep < TestOutput
   end
 
   def test_searching_two_files_for_regex
-    mlgrep(*%w'\$\w+ fsm.rb any_white_space.rb')
+    mlgrep *%w'\$\w+ fsm.rb any_white_space.rb'
     check_stdout("fsm.rb:138: $stderr",
                  "fsm.rb:138: $DEBUG")
   end
 
   def test_searching_all_ruby_files_for_regex_excluding_test_files
-    mlgrep(*%w'-x test_ -r *.rb \$\S+')
+    mlgrep *%w'-x test_ -r *.rb \$\S+'
     check_sorted_stdout("./fsm.rb:138: $DEBUG",
                         "./fsm.rb:138: $stderr")
   end
@@ -217,39 +219,39 @@ class TestMlgrep < TestOutput
     assert_equal 0, mlgrep(*%w'-r fsm.rb \$\S+ non-existent/')
     check_sorted_stdout("./fsm.rb:138: $DEBUG",
                         "./fsm.rb:138: $stderr")
-    check_stderr("mlgrep: No such file or directory - non-existent/\n")
+    check_stderr "mlgrep: No such file or directory - non-existent/\n"
   end
 
   def test_line_mode
-    mlgrep(*%w'withoutXmlComments skip_stuff.rb')
+    mlgrep *%w'withoutXmlComments skip_stuff.rb'
     check_stdout "skip_stuff.rb:9: withoutXmlComments"
 
-    mlgrep(*%w'-n withoutXmlComments skip_stuff.rb')
+    mlgrep *%w'-n withoutXmlComments skip_stuff.rb'
     check_stdout "skip_stuff.rb:9: def withoutXmlComments"
   end
 
   def test_source_flag
-    mlgrep(*%w'-S -x test_ withoutXmlComments')
+    mlgrep *%w'-S -x test_ withoutXmlComments'
     check_stdout("./skip_stuff.rb:9: withoutXmlComments",
-                 "./mlgrep:337: withoutXmlComments")
+                 "./mlgrep:340: withoutXmlComments")
   end
 
   def test_source_flag_with_explicit_directory
-    mlgrep(*%w'-S -x test_ withoutXmlComments ./')
+    mlgrep *%w'-S -x test_ withoutXmlComments ./'
     check_stdout("./skip_stuff.rb:9: withoutXmlComments",
-                 "./mlgrep:337: withoutXmlComments")
+                 "./mlgrep:340: withoutXmlComments")
   end
 
   def test_source_flag_when_rc_file_is_missing
-    mlgrep(*%w'-f mlgreprc -S -x test_ withoutXmlComments')
+    mlgrep *%w'-f mlgreprc -S -x test_ withoutXmlComments'
     check_stdout("./skip_stuff.rb:9: withoutXmlComments",
-                 "./mlgrep:337: withoutXmlComments")
+                 "./mlgrep:340: withoutXmlComments")
   ensure
     File.unlink 'mlgreprc'
   end
 
   def test_only_group_match
-    mlgrep(*%w'-o without(X..)Comments skip_stuff.rb')
+    mlgrep *%w'-o without(X..)Comments skip_stuff.rb'
     check_stdout "skip_stuff.rb:9: Xml"
   end
 
@@ -264,8 +266,16 @@ class TestMlgrep < TestOutput
                  "   26 TOTAL /F../")
   end
 
+  def test_statistics_ending_with_space
+    assert_equal 0, mlgrep(*%w'-k .E. skip_stuff.rb')
+    check_stdout('    5 skip_stuff.rb',
+                 '--------------------------------------------------',
+                 '    2 "RE "',
+                 '    3 RE,',
+                 '    5 TOTAL /.E./')
+  end
+
   def test_statistics_with_stdin
-    $stdin = StringIO.new
     $stdin.string = IO.read 'fsm.rb'
     assert_equal 0, mlgrep(*%w'-k F..')
     check_stdout("   26 STDIN",
@@ -275,19 +285,17 @@ class TestMlgrep < TestOutput
                  "    1 Fil",
                  "    1 Fol",
                  "   26 TOTAL /F../")
-  ensure
-    $stdin = STDIN
   end
 
   def test_skipping_comments
-    mlgrep(*%w'-c class fsm.rb')
+    mlgrep *%w'-c class fsm.rb'
     check_sorted_stdout("fsm.rb:1: class",
                         "fsm.rb:86: class",
                         "fsm.rb:90: class")
   end
 
   def test_skipping_strings
-    mlgrep(*%w'name fsm.rb')
+    mlgrep *%w'name fsm.rb'
     check_stdout("fsm.rb:8: name",
                  "fsm.rb:11: name",
                  "fsm.rb:13: name",
@@ -299,7 +307,7 @@ class TestMlgrep < TestOutput
                  "fsm.rb:62: name",
                  "fsm.rb:71: name")
 
-    mlgrep(*%w'-s name fsm.rb')
+    mlgrep *%w'-s name fsm.rb'
     check_stdout("fsm.rb:8: name",
                  "fsm.rb:11: name",
                  "fsm.rb:13: name",
@@ -318,7 +326,7 @@ class TestMlgrep < TestOutput
   end
 
   def test_until_in_regexp
-    mlgrep(*%w'<\u[>\n] fsm.rb')
+    mlgrep *%w'<\u[>\n] fsm.rb'
     check_stdout('fsm.rb:15: <#{name}>',
                  'fsm.rb:37: <tt>',
                  'fsm.rb:37: </tt>',
@@ -345,22 +353,19 @@ class TestMlgrep < TestOutput
   end
 
   def test_zero_length_match
-    mlgrep('(class FSM)?', 'fsm.rb')
-    check_stdout('fsm.rb:86: class FSM')
+    mlgrep '(class FSM)?', 'fsm.rb'
+    check_stdout 'fsm.rb:86: class FSM'
   end
 
   def test_searching_stdin
     # Empty stdin
-    $stdin = StringIO.new
     $stdin.string = ""
     assert_equal 1, mlgrep('class FSM')
 
     # File contents on stdin
-    $stdin.string = IO.read('fsm.rb')
+    $stdin.string = IO.read 'fsm.rb'
     assert_equal 0, mlgrep('class FSM')
     check_stdout "class FSM"
-  ensure
-    $stdin = STDIN
   end
 
   def test_file_error
@@ -371,13 +376,14 @@ class TestMlgrep < TestOutput
   def test_skipping_python_strings
     check_tmp_file('tmp.py',
                    ['foo1 = "foo"',
-                    "foo2 = 'foo'",
                     '"""',
                     'foo',
-                    '"""'],
-                   ['-nNs', 'foo'],
-                   ["foo1 =",
-                    "foo2 ="])
+                    '"""',
+                    "foo2 = 'foo'",
+                   ],
+                   ['-ns', 'foo'],
+                   ['tmp.py:1: foo1 = ""',
+                    "tmp.py:5: foo2 = ''"])
   end
 
   def test_recursive_search
@@ -391,6 +397,24 @@ class TestMlgrep < TestOutput
                     "../mlgrep/test_fsm.rb",
                     "../mlgrep/fsm.rb",
                     "../mlgrep/tmp/tmp.rb",
+                    'tmp/tmp.rb'])
+  ensure
+    FileUtils.rm_rf "tmp"
+  end
+
+  # There was a bug affecting recursive searches where the pattern could match
+  # directories.
+  def test_recursive_search_asterisk
+    FileUtils.mkdir_p "tmp"
+    check_tmp_file('tmp/tmp.rb',
+                   ['fsm = 0'],
+                   %w'-x coverage|\.git -lr * fsm .',
+                   ["./test_mlgrep.rb",
+                    "./any_white_space.rb",
+                    "./mlgrep",
+                    "./test_fsm.rb",
+                    "./fsm.rb",
+                    "./tmp/tmp.rb",
                     'tmp/tmp.rb'])
   ensure
     FileUtils.rm_rf "tmp"

@@ -105,7 +105,8 @@ def search_recursively_by_patterns(parameters)
       if File.directory? f and not File.symlink? f
         f = f.realpath if parameters[:flags][:absolute_paths]
         files = parameters[:patterns].map { |p|
-          Dir[File.join(f,p)].exclude parameters[:exclude_regexen]
+          all = Dir[File.join(f,p)].exclude parameters[:exclude_regexen]
+          all.reject { |e| File.directory? e }
         }
         files << hashbang_matches(parameters[:normalized_args], f)
         mlgrep_search_files($stdout, parameters[:regexp_to_find],
@@ -145,7 +146,8 @@ def parse_args(args)
   }.flatten
 
   args = normalized_args.dup
-  rc_file = in_home_dir '.mlgreprc' # Default. May be changed by -f.
+  # Default mlgreprc file. May be changed by -f.
+  rc_file = File.join(ENV['HOME'] || ENV['HOMEDRIVE'], '.mlgreprc')
 
   while args.first =~ /^-/
     %w(ln lN lq lo lk).each { |combo|
@@ -178,17 +180,17 @@ def parse_args(args)
 end
 
 def print_statistics(regexp_to_find)
-  [ $file_statistics, $match_statistics ].each { |table|
-    table.sort.each { |key, count|
-      key = %Q{"#{key}"} if key =~ /\s+$/
-      puts "%5d %s" % [count, key]
-    }
-    if table.object_id == $file_statistics.object_id
-      puts "-" * 50
-    else
-      total = table.values.inject(0) { |sum, count| sum + count }
-      printf "%5d TOTAL /%s/\n", total, regexp_to_find.source
-    end
+  print_table $file_statistics
+  puts "-" * 50
+  print_table $match_statistics
+  total = $match_statistics.values.inject(0) { |sum, count| sum + count }
+  printf "%5d TOTAL /%s/\n", total, regexp_to_find.source
+end
+
+def print_table(table)
+  table.sort.each { |key, count|
+    key = %Q{"#{key}"} if key =~ /\s+$/
+    puts "%5d %s" % [count, key]
   }
 end
 
@@ -211,10 +213,6 @@ def create_default_mlgreprc(rc_file)
            "the -X flag.")
     f.puts "exclude: '.svn/'"
   }
-end
-
-def in_home_dir(rel_path)
-  File.join(ENV['HOME'] || ENV['HOMEDRIVE'], rel_path)
 end
 
 def make_regex(re_string, flags)
@@ -329,7 +327,12 @@ end
 
 class String
   def multiline_grep(file_name, do_strip, re, flags)
-    encoding = $1 if self =~ /coding: ([\w-]+)/
+    begin
+      encoding = $1 if self =~ /coding: ([\w-]+)/
+    rescue ArgumentError => e
+      $stderr.puts "mlgrep: #{e} in #{file_name}"
+      return
+    end
 
     if flags[:no_comments]
       replace case file_name
@@ -345,9 +348,10 @@ class String
               end
     end
     if flags[:no_strings]
-      replace withoutCppStrings
       if file_name =~ /\.py$/ || self =~ /\A#.*ython/
         replace withoutPythonStrings
+      else
+        replace withoutCppStrings
       end
     end
 
