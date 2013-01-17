@@ -242,7 +242,7 @@ def mlgrep_search_files(output, re, names, flags = {})
   names.reject { |name| File.symlink? name or File.directory? name }.each { |filename|
     begin
       text = IO.read filename
-    rescue Errno::ENOENT => e
+    rescue Errno::ENOENT, Errno::EIO, Errno::ENXIO => e
       $stderr.puts "mlgrep: #{e}"
       next
     end
@@ -339,7 +339,7 @@ class String
       replace case file_name
               when /\.xml$/i
                 withoutXmlComments
-              when /\.(properties|rb|sh|pm|pl|py|cmake|mak)$/, /CMakeLists.txt/
+              when /\.(properties|cfg|rb|sh|pm|pl|py|cmake|mak)$/, /CMakeLists.txt/
                 withoutScriptComments
               else if self =~ /\A#[!\s]/m
                      withoutScriptComments
