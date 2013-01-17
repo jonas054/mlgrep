@@ -17,6 +17,7 @@ Languages = {
   '-C' => { :glob => '*.{cc,c,cpp}'             },
   '-H' => { :glob => '*.{hh,h,hpp}'             },
   '-J' => { :glob => '*.java'                   },
+  '-V' => { :glob => '[0-9]*'                   },
   '-M' => { :glob => '{*.cmake,CMakeLists.txt}' }
 }
 
@@ -157,7 +158,7 @@ def parse_args(args)
 
     case args.shift
       # Files to include/exclude
-    when /^-[CHJLMPR]$/ then patterns << Languages[$&][:glob]
+    when /^-[CHJLMPRV]$/ then patterns << Languages[$&][:glob]
     when '-S' then patterns << get_property('source', rc_file)
     when '-r' then patterns << args.shift
     when '-f' then rc_file = args.shift
