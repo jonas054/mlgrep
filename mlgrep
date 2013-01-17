@@ -18,7 +18,7 @@ Languages = {
   '-H' => { :glob => '*.{hh,h,hpp}'             },
   '-J' => { :glob => '*.java'                   },
   '-V' => { :glob => '[0-9]*'                   },
-  '-M' => { :glob => '{*.cmake,CMakeLists.txt}' }
+  '-M' => { :glob => '{*.cmake,CMakeLists.txt,Makefile,Makefile.old,makefile,*.mak,*.mk}' }
 }
 
 def mlgrep(*args)
