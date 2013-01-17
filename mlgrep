@@ -329,7 +329,7 @@ end
 class String
   def multiline_grep(file_name, do_strip, re, flags)
     begin
-      encoding = $1 if self =~ /coding: ([\w-]+)/
+      encoding = $2 if self =~ /^[^a-zA-Z]\b(en)?coding: ([\w-]+)/
     rescue ArgumentError => e
       $stderr.puts "mlgrep: #{e} in #{file_name}"
       return
