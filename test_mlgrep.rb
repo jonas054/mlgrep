@@ -47,7 +47,7 @@ class TestUsageErrors < TestOutput
     assert_equal 0, mlgrep(%w'-X class fsm.rb')
     $stdout.string = ''
     check(Regexp.new('Exclusion flag .* but no pattern flag ' +
-                     '\(-C,-H,-J,-L,-M,-P,-R,-S,-r\) or file list'),
+                     '\(-C,-H,-J,-L,-M,-P,-R,-V,-S,-r\) or file list'),
           '-X', 'abc')
   end
 
@@ -97,7 +97,7 @@ class TestUsageErrors < TestOutput
 
   def check(regexp, *args)
     assert_equal 1, mlgrep(*args)
-    assert $stderr.string =~ regexp
+    assert_match $stderr.string, regexp
     $stderr.string = ''
   end
 end
@@ -170,21 +170,29 @@ class TestMlgrep < TestOutput
   def test_whole_word
     mlgrep *%w'-nN default fsm.rb'
     # Without the -w flag, we get a match on 'default' and 'defaultAction'.
-    check_stdout("# the default action executed for all rules that don't have their own",
-                 "def initialize(initialState, &defaultAction)",
-                 "@state, @defaultAction = initialState, defaultAction",
-                 "# Adds a state/event transition (a rule). If no block is given, the default",
-                 "action || @defaultAction || proc {}]",
-                 "# Executes the default action. Typically used from within an action when",
-                 "# you want to execute the default action plus something more.",
-                 "@defaultAction.call @event, @state, @newState")
+    lines =
+      ["# the default action executed for all rules that don't have their own",
+       "def initialize(initialState, &defaultAction)",
+       "@state, @defaultAction = initialState, defaultAction",
+       "# Adds a state/event transition (a rule). If no block is given, the " +
+       "default",
+       "action || @defaultAction || proc { }]",
+       "# Executes the default action. Typically used from within an action " +
+       "when",
+       "# you want to execute the default action plus something more.",
+       "@defaultAction.call @event, @state, @newState"]
+    check_stdout(*lines)
 
     mlgrep *%w'-wnN default fsm.rb'
     # With the -w flag, we only match the word 'default'.
-    check_stdout("# the default action executed for all rules that don't have their own",
-                 "# Adds a state/event transition (a rule). If no block is given, the default",
-                 "# Executes the default action. Typically used from within an action when",
-                 "# you want to execute the default action plus something more.")
+    lines =
+      ["# the default action executed for all rules that don't have their own",
+       "# Adds a state/event transition (a rule). If no block is given, the " +
+       "default",
+       "# Executes the default action. Typically used from within an action " +
+       "when",
+       "# you want to execute the default action plus something more."]
+    check_stdout(*lines)
   end
 
   def test_exclude_self
@@ -233,19 +241,19 @@ class TestMlgrep < TestOutput
   def test_source_flag
     mlgrep *%w'-S -x test_ withoutXmlComments'
     check_stdout("./skip_stuff.rb:9: withoutXmlComments",
-                 "./mlgrep:340: withoutXmlComments")
+                 "./mlgrep:341: withoutXmlComments")
   end
 
   def test_source_flag_with_explicit_directory
     mlgrep *%w'-S -x test_ withoutXmlComments ./'
     check_stdout("./skip_stuff.rb:9: withoutXmlComments",
-                 "./mlgrep:340: withoutXmlComments")
+                 "./mlgrep:341: withoutXmlComments")
   end
 
   def test_source_flag_when_rc_file_is_missing
     mlgrep *%w'-f mlgreprc -S -x test_ withoutXmlComments'
     check_stdout("./skip_stuff.rb:9: withoutXmlComments",
-                 "./mlgrep:340: withoutXmlComments")
+                 "./mlgrep:341: withoutXmlComments")
   ensure
     File.unlink 'mlgreprc'
   end
@@ -346,7 +354,8 @@ class TestMlgrep < TestOutput
     File.open(name, "w") { |f| f.puts "# -*- coding: bogus-8 -*-" }
     if RUBY_VERSION !~ /1.8/
       mlgrep '.', name
-      check_stderr "mlgrep: Warning: unknown encoding name - bogus-8 in testfile.txt\n"
+      check_stderr("mlgrep: Warning: unknown encoding name - bogus-8 in " +
+                   "testfile.txt\n")
     end
   ensure
     File.unlink name
@@ -473,8 +482,8 @@ class TestMlgrep < TestOutput
     expected = yield lines
     # The _flymake files are temporary files created by Emacs.
     actual = yield $stdout.string.split(/\n/).reject { |n| n =~ /_flymake.rb/ }
-    assert_equal expected, actual
     $stdout.string = ''
+    assert_equal expected, actual
   end
 end
 
@@ -485,7 +494,8 @@ class TestMethods < Test::Unit::TestCase
     check_regex %r'^.*123.*[\n$]',         '123',       :line => true
     check_regex %r'^.*12[^\n]*3.*[\n$]',   '12[^\n]*3', :line => true
     check_regex %r'\b(?:123)\b'm,          '123',       :whole_word => true
-    check_regex %r'^.*\b(?:123)\b.*[\n$]', '123',       :line => true, :whole_word => true
+    check_regex(%r'^.*\b(?:123)\b.*[\n$]', '123',
+                :line => true, :whole_word => true)
   end
 
   def test_make_regexp_special_additions
