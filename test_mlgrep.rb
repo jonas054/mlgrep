@@ -41,7 +41,7 @@ class TestUsageErrors < TestOutput
   end
 
   # With -X we say that we want to exclude files from the search based on the
-  # 'exclude' property in .mlgreprc, but -X requires another flag such as -S
+  # 'exclude' property in .mlgrep.yml, but -X requires another flag such as -S
   # that states which files to search for in the first place.
   def test_only_X_flag
     assert_equal 0, mlgrep(%w'-X class fsm.rb')
@@ -76,23 +76,12 @@ class TestUsageErrors < TestOutput
           '-n', 'class FSM\n', 'fsm.rb')
   end
 
-  def test_mlgreprc_with_no_source_property
-    File.open('mlgreprc', 'w') {}
-    check(%r"No line starting with source: found in mlgreprc",
-          '-f', 'mlgreprc', '-Sl', '.')
+  def test_mlgrep_yml_with_no_source_property
+    File.open('mlgrep.yml', 'w') {}
+    check(%r"No line starting with source: found in mlgrep.yml",
+          '-f', 'mlgrep.yml', '-Sl', '.')
   ensure
-    File.unlink 'mlgreprc'
-  end
-
-  def test_mlgreprc_with_double_source_property
-    File.open('mlgreprc', 'w') { |f|
-      f.puts 'source: *.c'
-      f.puts 'source: *.java'
-    }
-    check(%r"Multiple entries for property source found in mlgreprc",
-          '-f', 'mlgreprc', '-Sl', '.')
-  ensure
-    File.unlink 'mlgreprc'
+    File.unlink 'mlgrep.yml'
   end
 
   def check(regexp, *args)
@@ -247,7 +236,7 @@ class TestMlgrep < TestOutput
     check_stdout("./skip_stuff.rb:9: withoutXmlComments",
                  "./mlgrep:340: withoutXmlComments")
   ensure
-    File.unlink 'mlgreprc'
+    File.unlink 'mlgrep.yml'
   end
 
   def test_only_group_match

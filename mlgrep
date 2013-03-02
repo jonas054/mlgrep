@@ -1,6 +1,7 @@
 #!/usr/bin/env ruby
 
 require 'pathname'
+require 'yaml'
 
 MLGREP_HOME = File.dirname Pathname.new(__FILE__).realpath
 
@@ -147,8 +148,8 @@ def parse_args(args)
   }.flatten
 
   args = normalized_args.dup
-  # Default mlgreprc file. May be changed by -f.
-  rc_file = File.join(ENV['HOME'] || ENV['HOMEDRIVE'], '.mlgreprc')
+  # Default mlgrep.yml file. May be changed by -f.
+  cfg_file = File.join(ENV['HOME'] || ENV['HOMEDRIVE'], '.mlgrep.yml')
 
   while args.first =~ /^-/
     %w(ln lN lq lo lk).each { |combo|
@@ -159,12 +160,12 @@ def parse_args(args)
     case args.shift
       # Files to include/exclude
     when /^-[CHJLMPR]$/ then patterns << Languages[$&][:glob]
-    when '-S' then patterns << get_property('source', rc_file)
+    when '-S' then patterns << get_property('source', cfg_file)
     when '-r' then patterns << args.shift
-    when '-f' then rc_file = args.shift
+    when '-f' then cfg_file = args.shift
     when '-x' then exclude_regexen << Regexp.new(args.shift)
     when '-X'
-      re = get_property 'exclude', rc_file
+      re = get_property 'exclude', cfg_file
       exclude_regexen << Regexp.new(re) unless re.empty?
       # Flags
     when simple_flags_regex then flags[simple_flags[$&]] = true
@@ -195,21 +196,18 @@ def print_table(table)
   }
 end
 
-def get_property(name, rc_file)
-  create_default_mlgreprc(rc_file) unless File.exist? rc_file
-  lines = IO.readlines(rc_file).grep %r"^#{name}:"
-  case lines.size
-  when 0 then raise "No line starting with #{name}: found in #{rc_file}"
-  when 1 then lines.first.match(%r"([\"'])(.*)\1")[2]
-  else raise "Multiple entries for property #{name} found in #{rc_file}"
-  end
+def get_property(name, cfg_file)
+  create_default_config_file(cfg_file) unless File.exist? cfg_file
+  cfg = YAML.load_file(cfg_file) or raise("No line starting with #{name}: " +
+                                          "found in #{cfg_file}")
+  cfg[name]
 end
 
-def create_default_mlgreprc(rc_file)
-  File.open(rc_file, 'w') { |f|
+def create_default_config_file(cfg_file)
+  File.open(cfg_file, 'w') { |f|
     f.puts "# Glob pattern for files to find with the -S flag."
-    f.puts("source: '{*.{cc,c,cpp,hh,h,hpp,java,pl,PL,pm,pod,t,py,rb,cmake}," +
-           "CMakeLists.txt}'")
+    f.puts("source: '{*.{cc,c,cpp,hh,h,hpp,java,js,pl,PL,pm,pod,t,py,rb," +
+           "cmake,rhtml,erb,yml},CMakeLists.txt}'")
     f.puts("# Regular expression for files and directories to exclude with " +
            "the -X flag.")
     f.puts "exclude: '.svn/'"
