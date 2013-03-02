@@ -222,19 +222,19 @@ class TestMlgrep < TestOutput
   def test_source_flag
     mlgrep *%w'-S -x test_ withoutXmlComments'
     check_stdout("./skip_stuff.rb:9: withoutXmlComments",
-                 "./mlgrep:340: withoutXmlComments")
+                 %r"./mlgrep:\d+: withoutXmlComments")
   end
 
   def test_source_flag_with_explicit_directory
     mlgrep *%w'-S -x test_ withoutXmlComments ./'
     check_stdout("./skip_stuff.rb:9: withoutXmlComments",
-                 "./mlgrep:340: withoutXmlComments")
+                 %r"./mlgrep:\d+: withoutXmlComments")
   end
 
   def test_source_flag_when_rc_file_is_missing
-    mlgrep *%w'-f mlgreprc -S -x test_ withoutXmlComments'
+    mlgrep *%w'-f mlgrep.yml -S -x test_ withoutXmlComments'
     check_stdout("./skip_stuff.rb:9: withoutXmlComments",
-                 "./mlgrep:340: withoutXmlComments")
+                 %r"./mlgrep:\d+: withoutXmlComments")
   ensure
     File.unlink 'mlgrep.yml'
   end
@@ -462,7 +462,10 @@ class TestMlgrep < TestOutput
     expected = yield lines
     # The _flymake files are temporary files created by Emacs.
     actual = yield $stdout.string.split(/\n/).reject { |n| n =~ /_flymake.rb/ }
-    assert_equal expected, actual
+    expected.each_index { |ix|
+      assert(expected[ix] === actual[ix],
+             "No match: #{expected[ix]} === #{actual[ix]}")
+    }
     $stdout.string = ''
   end
 end
