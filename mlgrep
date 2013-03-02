@@ -11,9 +11,10 @@ require 'any_white_space'
 require 'skip_stuff' # String#without{Xml|Script|Python|Cpp}{Comments|Strings}
 
 Languages = {
-  '-P' => { :glob => '*.py',               :hashbang => /python/i },
-  '-R' => { :glob => '*.rb',               :hashbang => /ruby/i },
-  '-L' => { :glob => '*.{pl,PL,pm,pod,t}', :hashbang => /perl/i },
+  '-P' => { :glob => '*.py',                    :hashbang => /python/i },
+  '-R' => { :glob => '{*.{rb,gemspec},Rakefile,Gemfile}',
+            :hashbang => /ruby/i },
+  '-L' => { :glob => '*.{pl,PL,pm,pod,t}',      :hashbang => /perl/i },
   '-C' => { :glob => '*.{cc,c,cpp}'             },
   '-H' => { :glob => '*.{hh,h,hpp}'             },
   '-J' => { :glob => '*.java'                   },
