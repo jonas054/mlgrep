@@ -19,7 +19,8 @@ Languages = {
   '-C' => { :glob => '*.{cc,c,cpp}'             },
   '-H' => { :glob => '*.{hh,h,hpp}'             },
   '-J' => { :glob => '*.java'                   },
-  '-M' => { :glob => '{*.cmake,CMakeLists.txt}' }
+  '-V' => { :glob => '[0-9]*'                   },
+  '-M' => { :glob => '{*.cmake,CMakeLists.txt,Makefile,Makefile.old,makefile,*.mak,*.mk}' }
 }
 
 def mlgrep(*args)
@@ -159,7 +160,7 @@ def parse_args(args)
 
     case args.shift
       # Files to include/exclude
-    when /^-[CHJLMPR]$/ then patterns << Languages[$&][:glob]
+    when /^-[CHJLMPRV]$/ then patterns << Languages[$&][:glob]
     when '-S' then patterns << get_property('source', cfg_file)
     when '-r' then patterns << args.shift
     when '-f' then cfg_file = args.shift
@@ -198,9 +199,9 @@ end
 
 def get_property(name, cfg_file)
   create_default_config_file(cfg_file) unless File.exist? cfg_file
-  cfg = YAML.load_file(cfg_file) or raise("No line starting with #{name}: " +
-                                          "found in #{cfg_file}")
-  cfg[name]
+  cfg = YAML.load_file(cfg_file)
+  cfg[name] or raise("No line starting with #{name}: " +
+                     "found in #{cfg_file}")
 end
 
 def create_default_config_file(cfg_file)
@@ -240,7 +241,7 @@ def mlgrep_search_files(output, re, names, flags = {})
   names.reject { |name| File.symlink? name or File.directory? name }.each { |filename|
     begin
       text = IO.read filename
-    rescue Errno::ENOENT => e
+    rescue Errno::ENOENT, Errno::EIO, Errno::ENXIO => e
       $stderr.puts "mlgrep: #{e}"
       next
     end
@@ -327,7 +328,7 @@ end
 class String
   def multiline_grep(file_name, do_strip, re, flags)
     begin
-      encoding = $1 if self =~ /coding: ([\w-]+)/
+      encoding = $3 if self =~ %r"^\s*(#|/\*|//)[^a-zA-Z]*\b(en)?coding: ([\w-]+)"
     rescue ArgumentError => e
       $stderr.puts "mlgrep: #{e} in #{file_name}"
       return
@@ -337,7 +338,7 @@ class String
       replace case file_name
               when /\.xml$/i
                 withoutXmlComments
-              when /\.(properties|rb|sh|pm|pl|py|cmake|mak)$/, /CMakeLists.txt/
+              when /\.(properties|cfg|rb|sh|pm|pl|py|cmake|mak)$/, /CMakeLists.txt/
                 withoutScriptComments
               else if self =~ /\A#[!\s]/m
                      withoutScriptComments

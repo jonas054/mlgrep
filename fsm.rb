@@ -97,7 +97,7 @@ class FSM
     # action.
     #
     # :call-seq:
-    #   new(initialState) { |event, old_state, new_state| ... } 
+    #   new(initialState) { |event, old_state, new_state| ... }
     #   new(initialState)
     #
     def initialize(initialState, &defaultAction)
@@ -122,7 +122,7 @@ class FSM
     #
     def add(state, event, newState = state, &action)
         @matrix << [state, event, newState,
-                    action || @defaultAction || proc {}]
+                    action || @defaultAction || proc { }]
     end
 
     # Feeds the given array of actual events to the FSM, causing state
@@ -132,7 +132,7 @@ class FSM
     def run(events)
         events.each_with_index { |ev, ix|
             @event = ev
-            state, event, newState, action = @matrix.find { |s,e,|
+            state, event, newState, action = @matrix.find { |s, e, |
                 (s === @state or s == :ANY) and (e === @event or e == :ANY)
             }
             $stderr << "#@event #@state->#{newState}\n" if $DEBUG
@@ -140,7 +140,7 @@ class FSM
                 raise "Event #{@event.inspect} in state #{@state.inspect}"
             end
             @newState = newState unless newState == :ANY || Either === newState
-            action.call(@event, @state, @newState, events[ix+1..-1],
+            action.call(@event, @state, @newState, events[(ix + 1)..-1],
                         events[0...ix])
             @state = @newState if @newState
         }
@@ -186,8 +186,8 @@ class FSM
              "\tnode [shape = circle];\n" +
              @matrix.map { |ln|
                  label = ln[1].inspect
-                 label = '"' + label + '"' if label[0,1] != '"'
-                 "\t#{ln[0]} -> #{ln[2]||ln[0]} [ label = #{label} ];\n"
+                 label = '"' + label + '"' if label[0, 1] != '"'
+                 "\t#{ln[0]} -> #{ln[2] || ln[0]} [ label = #{label} ];\n"
              }.join +
              "}\n")
         File.open(fileName, 'w') { |file| file.write(s) }
