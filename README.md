@@ -22,7 +22,7 @@ Command flag    | Description
  `-o`           | only match. If the regexp contains a group (a parenthesized expression), only text matching that group, rather than the entire regexp match, will be printed.
  `-l`           | list (just print names of files where a match was found)
  `-x <regexp>`  | exclude files whose names match the regexp
- `-X`           | exclude files according to 'exclude' property in ~/.mlgreprc
+ `-X`           | exclude files according to 'exclude' property in ~/.mlgrep.yml
  `-r <pattern>` | search in files matching the pattern (e.g. -r "*.skel") The directory tree starting at current directory is searched.
  `-C`           | equivalent to `-r '*.{cc,c}'` (C, C++)
  `-H`           | equivalent to `-r '*.{hh,h}'` (C/C++ headers)
@@ -54,32 +54,32 @@ to the first occurrence of `X` (`\u` is for *until*). For example,
 `/\u;/` is replaced by `/[^;]*;/` and `/\u[123]/` is replaced by
 `/[^123]*[123]/`.
 
-Pattern options (-r, -C, -H, -J, -L, -M, -P, -S) may be combined with
-each other and with <files...>.
+Pattern options (`-r`, `-C`, `-H`, `-J`, `-L`, `-M`, `-P`, `-S`) may be
+combined with each other and with *files...*.
 
 ### Examples
 
-  Search all source code for single statements inside braces:
+Search all source code for single statements inside braces:
 
 ```sh
-  > mlgrep -Ssc '[^(]\) \{[^;{}]*; \}'
+$ mlgrep -Ssc '[^(]\) \{[^;{}]*; \}'
 ```
 
-  Search in C++ files  - excluding generated code - for null pointer check
-  after allocation (which is pointless in Dicos):
+Search in C++ files  - excluding generated code - for null pointer check
+after allocation (which is pointless in Dicos):
 
 ```sh
-  > mlgrep -x '/(generated|user|provider)' -CHc '(\w+) = (new|\w+ :: construct \()\u; [^}]* if \( \1 == (0|NULL)'
+$ mlgrep -x '/(generated|user|provider)' -CHc '(\w+) = (new|\w+ :: construct \()\u; [^}]* if \( \1 == (0|NULL)'
 ```
 
-  Strip comments from cc files and write them to temporary files:
+Strip comments from cc files and write them to temporary files:
 
 ```sh
-  [sh]$ for i in *.cc; do mlgrep -Nnc . $i > /tmp/$i; done
+$ for i in *.cc; do mlgrep -Nnc . $i > /tmp/$i; done
 ```
 
-Example of ~/.mlgreprc:
+Example of `~/.mlgrep.yml`:
 
 ```yaml
-  exclude: '/(test|user|generated|provider|included|.deps|delosInfo|obj\.)'
+exclude: '/(test|user|generated|provider|included|.deps|delosInfo|obj\.)'
 ```
