@@ -1,15 +1,10 @@
-#!/usr/bin/env ruby
-
 require 'pathname'
 require 'yaml'
 
-MLGREP_HOME = File.dirname Pathname.new(__FILE__).realpath
+MLGREP_HOME = File.dirname File.dirname(Pathname.new(__FILE__).realpath)
 
-# Path for any_white_space.rb, skip_stuff.rb, and (indirectly) fsm.rb
-$:.unshift MLGREP_HOME
-
-require 'any_white_space'
-require 'skip_stuff' # String#without{Xml|Script|Python|Cpp}{Comments|Strings}
+require_relative 'any_white_space'
+require_relative 'skip_stuff' # String#without{Xml|Script|Python|Cpp}{Comments|Strings}
 
 Languages = {
   '-P' => { :glob => '*.py',                    :hashbang => /python/i },
@@ -406,5 +401,3 @@ class String
     def valid_encoding?() true end
   end
 end
-
-exit(mlgrep(*ARGV)) if $0 == __FILE__

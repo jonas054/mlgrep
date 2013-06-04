@@ -1,6 +1,6 @@
 $:.unshift '.'
 require 'test/unit'
-require 'any_white_space'
+require_relative '../lib/any_white_space'
 
 class TestAnyWhiteSpace < Test::Unit::TestCase
   def test_any_space

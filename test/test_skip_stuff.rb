@@ -1,6 +1,6 @@
 $:.unshift '.'
 require 'test/unit'
-require 'skip_stuff'
+require_relative '../lib/skip_stuff'
 
 class TestSkipStuff < Test::Unit::TestCase
   def test_python_strings

@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-load 'mlgrep'
+require_relative '../lib/mlgrep'
 require 'test/unit'
 require 'stringio'
 require 'fileutils'
@@ -44,7 +44,7 @@ class TestUsageErrors < TestOutput
   # 'exclude' property in .mlgrep.yml, but -X requires another flag such as -S
   # that states which files to search for in the first place.
   def test_only_X_flag
-    assert_equal 0, mlgrep(%w'-X class fsm.rb')
+    assert_equal 0, mlgrep(%w'-X class lib/fsm.rb')
     $stdout.string = ''
     check(Regexp.new('Exclusion flag .* but no pattern flag ' +
                      '\(-C,-H,-J,-L,-M,-P,-R,-V,-S,-r\) or file list'),
@@ -60,20 +60,20 @@ class TestUsageErrors < TestOutput
 
   # Flags that are not supported should be reported.
   def test_unknown_flag
-    check %r"Unknown flag:", '-g', 'abc', 'fsm.rb'
+    check %r"Unknown flag:", '-g', 'abc', 'lib/fsm.rb'
   end
 
   # Test giving arguments in the wrong order. Flags must come before regular
   # expression and files.
   def test_flag_after_regexp
-    check %r"Flag -i encountered after regexp", 'abc', '-i', 'fsm.rb'
+    check %r"Flag -i encountered after regexp", 'abc', '-i', 'lib/fsm.rb'
   end
 
   # Line mode (-n) works like the classic grep command, by searching for lines
   # that match a regexp. Then we can't have newline characters in the regexp.
   def test_newline_in_line_mode
     check(%r"Don't use \\n in regexp when in line mode",
-          '-n', 'class FSM\n', 'fsm.rb')
+          '-n', 'class FSM\n', 'lib/fsm.rb')
   end
 
   def test_mlgrep_yml_with_no_source_property
@@ -104,22 +104,22 @@ class TestMlgrep < TestOutput
   # This is the same as unix grep. When nothing is found an error code is
   # returned.
   def test_return_value_when_nothing_is_found
-    assert_equal 1, mlgrep(*%w'xyz123 fsm.rb')
-    assert_equal 1, mlgrep(*%w'-k xyz123 fsm.rb')
+    assert_equal 1, mlgrep(*%w'xyz123 lib/fsm.rb')
+    assert_equal 1, mlgrep(*%w'-k xyz123 lib/fsm.rb')
     check_stdout("--------------------------------------------------",
                  "    0 TOTAL /xyz123/")
   end
 
   # Basic functionality. File name is given as argument so no search for files.
   def test_searching_one_file_for_string
-    assert_equal 0, mlgrep('class FSM', 'fsm.rb')
-    check_stdout "fsm.rb:86: class FSM"
+    assert_equal 0, mlgrep('class FSM', 'lib/fsm.rb')
+    check_stdout "lib/fsm.rb:86: class FSM"
   end
 
   # Default is to print relative paths. With -a flag, the absolute path is
   # printed.
   def test_absolute_paths
-    mlgrep '-a', 'class FSM', 'fsm.rb'
+    mlgrep '-a', 'class FSM', 'lib/fsm.rb'
     assert $stdout.string =~ %r'^/'
     $stdout.string = ''
   end
@@ -127,40 +127,40 @@ class TestMlgrep < TestOutput
   # Long matches are shortened in output.
   def test_quiet_mode
     # Default length is 20 charactes before and after "...".
-    mlgrep '-q', 'class FSM.*end', 'fsm.rb'
-    check_stdout "fsm.rb:86: class FSM # Represen ... e.write(s) } end end"
+    mlgrep '-q', 'class FSM.*end', 'lib/fsm.rb'
+    check_stdout "lib/fsm.rb:86: class FSM # Represen ... e.write(s) } end end"
 
     # Specify length.
-    mlgrep '-q10', 'class FSM.*end', 'fsm.rb'
-    check_stdout "fsm.rb:86: class FSM  ...  } end end"
+    mlgrep '-q10', 'class FSM.*end', 'lib/fsm.rb'
+    check_stdout "lib/fsm.rb:86: class FSM  ...  } end end"
   end
 
   def test_case_sensitivity
     # Default is case sensitive.
-    mlgrep *%w'either fsm.rb'
-    check_stdout("fsm.rb:63: either",
-                 "fsm.rb:88: either",
-                 "fsm.rb:111: either")
+    mlgrep *%w'either lib/fsm.rb'
+    check_stdout("lib/fsm.rb:63: either",
+                 "lib/fsm.rb:88: either",
+                 "lib/fsm.rb:111: either")
 
     # Case insensitive with -i flag.
-    mlgrep *%w'-i either fsm.rb'
-    check_stdout("fsm.rb:63: either",
-                 "fsm.rb:88: either",
-                 "fsm.rb:90: Either",
-                 "fsm.rb:109: Either",
-                 "fsm.rb:111: either",
-                 "fsm.rb:111: Either",
-                 "fsm.rb:142: Either")
+    mlgrep *%w'-i either lib/fsm.rb'
+    check_stdout("lib/fsm.rb:63: either",
+                 "lib/fsm.rb:88: either",
+                 "lib/fsm.rb:90: Either",
+                 "lib/fsm.rb:109: Either",
+                 "lib/fsm.rb:111: either",
+                 "lib/fsm.rb:111: Either",
+                 "lib/fsm.rb:142: Either")
   end
 
   def test_searching_one_file_for_regex
-    mlgrep *%w'\$\w+ fsm.rb'
-    check_stdout("fsm.rb:138: $stderr",
-                 "fsm.rb:138: $DEBUG")
+    mlgrep *%w'\$\w+ lib/fsm.rb'
+    check_stdout("lib/fsm.rb:138: $stderr",
+                 "lib/fsm.rb:138: $DEBUG")
   end
 
   def test_whole_word
-    mlgrep *%w'-nN default fsm.rb'
+    mlgrep *%w'-nN default lib/fsm.rb'
     # Without the -w flag, we get a match on 'default' and 'defaultAction'.
     lines =
       ["# the default action executed for all rules that don't have their own",
@@ -175,7 +175,7 @@ class TestMlgrep < TestOutput
        "@defaultAction.call @event, @state, @newState"]
     check_stdout(*lines)
 
-    mlgrep *%w'-wnN default fsm.rb'
+    mlgrep *%w'-wnN default lib/fsm.rb'
     # With the -w flag, we only match the word 'default'.
     lines =
       ["# the default action executed for all rules that don't have their own",
@@ -189,75 +189,73 @@ class TestMlgrep < TestOutput
 
   def test_exclude_self
     mlgrep *%w'-R -l fsm'
-    check_sorted_stdout("./test_mlgrep.rb",
-                        "./any_white_space.rb",
-                        "./mlgrep",
-                        "./test_fsm.rb",
-                        "./fsm.rb")
+    check_sorted_stdout("./test/test_mlgrep.rb",
+                        "./lib/any_white_space.rb",
+                        "./test/test_fsm.rb",
+                        "./lib/fsm.rb")
 
-    # fsm.rb is excluded but not test_fsm.rb.
+    # lib/fsm.rb is excluded but not test_fsm.rb.
     mlgrep *%w'-Re -l fsm'
-    check_sorted_stdout("./test_mlgrep.rb",
-                        "./mlgrep",
-                        "./any_white_space.rb",
-                        "./test_fsm.rb")
+    check_sorted_stdout("./test/test_mlgrep.rb",
+                        "./lib/any_white_space.rb",
+                        "./test/test_fsm.rb")
   end
 
   def test_searching_two_files_for_regex
-    mlgrep *%w'\$\w+ fsm.rb any_white_space.rb'
-    check_stdout("fsm.rb:138: $stderr",
-                 "fsm.rb:138: $DEBUG")
+    mlgrep *%w'\$\w+ lib/fsm.rb lib/any_white_space.rb'
+    check_stdout("lib/fsm.rb:138: $stderr",
+                 "lib/fsm.rb:138: $DEBUG")
   end
 
   def test_searching_all_ruby_files_for_regex_excluding_test_files
     mlgrep *%w'-x test_ -r *.rb \$\S+'
-    check_sorted_stdout("./fsm.rb:138: $DEBUG",
-                        "./fsm.rb:138: $stderr")
+    check_sorted_stdout("./lib/fsm.rb:138: $DEBUG",
+                        "./lib/fsm.rb:138: $stderr")
   end
 
   def test_explicit_directory_that_doesnt_exist
-    assert_equal 0, mlgrep(*%w'-r fsm.rb \$\S+ non-existent/')
-    check_sorted_stdout("./fsm.rb:138: $DEBUG",
-                        "./fsm.rb:138: $stderr")
+    assert_equal 0, mlgrep(*%w'-r lib/fsm.rb \$\S+ non-existent/')
+    check_sorted_stdout("./lib/fsm.rb:138: $DEBUG",
+                        "./lib/fsm.rb:138: $stderr")
     check_stderr "mlgrep: No such file or directory - non-existent/\n"
   end
 
   def test_line_mode
-    mlgrep *%w'withoutXmlComments skip_stuff.rb'
-    check_stdout "skip_stuff.rb:9: withoutXmlComments"
+    mlgrep *%w'withoutXmlComments lib/skip_stuff.rb'
+    check_stdout "lib/skip_stuff.rb:9: withoutXmlComments"
 
-    mlgrep *%w'-n withoutXmlComments skip_stuff.rb'
-    check_stdout "skip_stuff.rb:9: def withoutXmlComments"
+    mlgrep *%w'-n withoutXmlComments lib/skip_stuff.rb'
+    check_stdout "lib/skip_stuff.rb:9: def withoutXmlComments"
   end
 
   def test_source_flag
     mlgrep *%w'-S -x test_ withoutXmlComments'
-    check_stdout("./skip_stuff.rb:9: withoutXmlComments",
-                 %r"./mlgrep:\d+: withoutXmlComments")
+    check_stdout("./lib/skip_stuff.rb:9: withoutXmlComments",
+                 %r"./lib/mlgrep.rb:\d+: withoutXmlComments")
   end
 
   def test_source_flag_with_explicit_directory
     mlgrep *%w'-S -x test_ withoutXmlComments ./'
-    check_stdout("./skip_stuff.rb:9: withoutXmlComments",
-                 %r"./mlgrep:\d+: withoutXmlComments")
+    check_stdout("./lib/skip_stuff.rb:9: withoutXmlComments",
+                 %r"./lib/mlgrep.rb:\d+: withoutXmlComments")
   end
 
   def test_source_flag_when_rc_file_is_missing
     mlgrep *%w'-f mlgrep.yml -S -x test_ withoutXmlComments'
-    check_stdout("./skip_stuff.rb:9: withoutXmlComments",
-                 %r"./mlgrep:\d+: withoutXmlComments")
+    check_stdout("./lib/skip_stuff.rb:9: withoutXmlComments",
+                 %r"./lib/mlgrep.rb:\d+: withoutXmlComments")
   ensure
     File.unlink 'mlgrep.yml'
   end
 
   def test_only_group_match
-    mlgrep *%w'-o without(X..)Comments skip_stuff.rb'
-    check_stdout "skip_stuff.rb:9: Xml"
+    mlgrep *%w'-o without(X..)Comments lib/skip_stuff.rb'
+    check_stdout "lib/skip_stuff.rb:9: Xml"
   end
 
   def test_statistics
-    assert_equal 0, mlgrep(*%w'-k F.. fsm.rb')
-    check_stdout("   26 fsm.rb",
+    assert_equal 0, mlgrep(*%w'-k F.. lib/fsm.rb')
+    check_stdout("   26 lib/fsm.rb",
                  "--------------------------------------------------",
                  "   23 FSM",
                  "    1 Fee",
@@ -267,8 +265,8 @@ class TestMlgrep < TestOutput
   end
 
   def test_statistics_ending_with_space
-    assert_equal 0, mlgrep(*%w'-k .E. skip_stuff.rb')
-    check_stdout('    5 skip_stuff.rb',
+    assert_equal 0, mlgrep(*%w'-k .E. lib/skip_stuff.rb')
+    check_stdout('    5 lib/skip_stuff.rb',
                  '--------------------------------------------------',
                  '    2 "RE "',
                  '    3 RE,',
@@ -276,7 +274,7 @@ class TestMlgrep < TestOutput
   end
 
   def test_statistics_with_stdin
-    $stdin.string = IO.read 'fsm.rb'
+    $stdin.string = IO.read 'lib/fsm.rb'
     assert_equal 0, mlgrep(*%w'-k F..')
     check_stdout("   26 STDIN",
                  "--------------------------------------------------",
@@ -288,57 +286,57 @@ class TestMlgrep < TestOutput
   end
 
   def test_skipping_comments
-    mlgrep *%w'-c class fsm.rb'
-    check_sorted_stdout("fsm.rb:1: class",
-                        "fsm.rb:86: class",
-                        "fsm.rb:90: class")
+    mlgrep *%w'-c class lib/fsm.rb'
+    check_sorted_stdout("lib/fsm.rb:1: class",
+                        "lib/fsm.rb:86: class",
+                        "lib/fsm.rb:90: class")
   end
 
   def test_skipping_strings
-    mlgrep *%w'name fsm.rb'
-    check_stdout("fsm.rb:8: name",
-                 "fsm.rb:11: name",
-                 "fsm.rb:13: name",
-                 "fsm.rb:13: name",
-                 "fsm.rb:15: name",
-                 "fsm.rb:15: name",
-                 "fsm.rb:21: name",
-                 "fsm.rb:54: name",
-                 "fsm.rb:62: name",
-                 "fsm.rb:71: name")
+    mlgrep *%w'name lib/fsm.rb'
+    check_stdout("lib/fsm.rb:8: name",
+                 "lib/fsm.rb:11: name",
+                 "lib/fsm.rb:13: name",
+                 "lib/fsm.rb:13: name",
+                 "lib/fsm.rb:15: name",
+                 "lib/fsm.rb:15: name",
+                 "lib/fsm.rb:21: name",
+                 "lib/fsm.rb:54: name",
+                 "lib/fsm.rb:62: name",
+                 "lib/fsm.rb:71: name")
 
-    mlgrep *%w'-s name fsm.rb'
-    check_stdout("fsm.rb:8: name",
-                 "fsm.rb:11: name",
-                 "fsm.rb:13: name",
-                 "fsm.rb:13: name",
-                 "fsm.rb:15: name", # one less match on line 15
-                 "fsm.rb:21: name",
-                 "fsm.rb:54: name",
-                 "fsm.rb:62: name",
-                 "fsm.rb:71: name")
+    mlgrep *%w'-s name lib/fsm.rb'
+    check_stdout("lib/fsm.rb:8: name",
+                 "lib/fsm.rb:11: name",
+                 "lib/fsm.rb:13: name",
+                 "lib/fsm.rb:13: name",
+                 "lib/fsm.rb:15: name", # one less match on line 15
+                 "lib/fsm.rb:21: name",
+                 "lib/fsm.rb:54: name",
+                 "lib/fsm.rb:62: name",
+                 "lib/fsm.rb:71: name")
   end
 
   def test_space_in_regexp
-    mlgrep 'nil @state', 'fsm.rb'
-    check_stdout("fsm.rb:168: nil @state",
-                 "fsm.rb:177: nil @state")
+    mlgrep 'nil @state', 'lib/fsm.rb'
+    check_stdout("lib/fsm.rb:168: nil @state",
+                 "lib/fsm.rb:177: nil @state")
   end
 
   def test_until_in_regexp
-    mlgrep *%w'<\u[>\n] fsm.rb'
-    check_stdout('fsm.rb:15: <#{name}>',
-                 'fsm.rb:37: <tt>',
-                 'fsm.rb:37: </tt>',
-                 'fsm.rb:41: <tt>',
-                 'fsm.rb:41: </tt>',
-                 'fsm.rb:58: << "#{oldState}-(#{event})->',
-                 'fsm.rb:65: << "[prime #{ev}]" ',
-                 'fsm.rb:83: <joning@home.se>',
-                 'fsm.rb:115: <tt>',
-                 'fsm.rb:115: </tt>',
-                 'fsm.rb:124: << [state, event, newState, ',
-                 'fsm.rb:138: << "#@event #@state->')
+    mlgrep *%w'<\u[>\n] lib/fsm.rb'
+    check_stdout('lib/fsm.rb:15: <#{name}>',
+                 'lib/fsm.rb:37: <tt>',
+                 'lib/fsm.rb:37: </tt>',
+                 'lib/fsm.rb:41: <tt>',
+                 'lib/fsm.rb:41: </tt>',
+                 'lib/fsm.rb:58: << "#{oldState}-(#{event})->',
+                 'lib/fsm.rb:65: << "[prime #{ev}]" ',
+                 'lib/fsm.rb:83: <joning@home.se>',
+                 'lib/fsm.rb:115: <tt>',
+                 'lib/fsm.rb:115: </tt>',
+                 'lib/fsm.rb:124: << [state, event, newState, ',
+                 'lib/fsm.rb:138: << "#@event #@state->')
   end
 
   def test_bad_encoding
@@ -354,8 +352,8 @@ class TestMlgrep < TestOutput
   end
 
   def test_zero_length_match
-    mlgrep '(class FSM)?', 'fsm.rb'
-    check_stdout 'fsm.rb:86: class FSM'
+    mlgrep '(class FSM)?', 'lib/fsm.rb'
+    check_stdout 'lib/fsm.rb:86: class FSM'
   end
 
   def test_searching_stdin
@@ -364,13 +362,13 @@ class TestMlgrep < TestOutput
     assert_equal 1, mlgrep('class FSM')
 
     # File contents on stdin
-    $stdin.string = IO.read 'fsm.rb'
+    $stdin.string = IO.read 'lib/fsm.rb'
     assert_equal 0, mlgrep('class FSM')
     check_stdout "class FSM"
   end
 
   def test_file_error
-    File.open_with_error_handling('fsm.rb') { raise Errno::ENXIO, "Hej" }
+    File.open_with_error_handling('lib/fsm.rb') { raise Errno::ENXIO, "Hej" }
     check_stdout 'mlgrep: No such device or address - Hej'
   end
 
@@ -392,11 +390,10 @@ class TestMlgrep < TestOutput
     check_tmp_file('tmp/tmp.rb',
                    ['fsm = 0'],
                    ['-Rl', 'fsm', '..'],
-                   ["../mlgrep/test_mlgrep.rb",
-                    "../mlgrep/any_white_space.rb",
-                    "../mlgrep/mlgrep",
-                    "../mlgrep/test_fsm.rb",
-                    "../mlgrep/fsm.rb",
+                   ["../mlgrep/test/test_mlgrep.rb",
+                    "../mlgrep/lib/any_white_space.rb",
+                    "../mlgrep/test/test_fsm.rb",
+                    "../mlgrep/lib/fsm.rb",
                     "../mlgrep/tmp/tmp.rb",
                     'tmp/tmp.rb'])
   ensure
@@ -410,11 +407,10 @@ class TestMlgrep < TestOutput
     check_tmp_file('tmp/tmp.rb',
                    ['fsm = 0'],
                    %w'-x coverage|\.git -lr * fsm .',
-                   ["./test_mlgrep.rb",
-                    "./any_white_space.rb",
-                    "./mlgrep",
-                    "./test_fsm.rb",
-                    "./fsm.rb",
+                   ["./test/test_mlgrep.rb",
+                    "./lib/any_white_space.rb",
+                    "./test/test_fsm.rb",
+                    "./lib/fsm.rb",
                     "./tmp/tmp.rb",
                     'tmp/tmp.rb'])
   ensure

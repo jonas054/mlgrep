@@ -1,5 +1,5 @@
 # -*- coding: iso-8859-1 -*-
-require 'fsm'
+require_relative 'fsm'
 
 class Regexp
     # Replaces space characters with \s* and returns a new multi-line regexp.

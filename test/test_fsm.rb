@@ -1,4 +1,4 @@
-require 'fsm'
+require_relative '../lib/fsm'
 require 'test/unit'
 
 class TestFSM < Test::Unit::TestCase
