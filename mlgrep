@@ -20,7 +20,8 @@ Languages = {
   '-H' => { :glob => '*.{hh,h,hpp}'             },
   '-J' => { :glob => '*.java'                   },
   '-V' => { :glob => '[0-9]*'                   },
-  '-M' => { :glob => '{*.cmake,CMakeLists.txt,Makefile,Makefile.old,makefile,*.mak,*.mk}' }
+  '-M' => { :glob =>
+    '{*.cmake,CMakeLists.txt,Makefile,Makefile.old,makefile,*.mak,*.mk}' }
 }
 
 def mlgrep(*args)
@@ -275,11 +276,11 @@ module Enumerable
 end
 
 class Doc
-  README = File.join MLGREP_HOME, "README"
+  README = File.join MLGREP_HOME, "README.md"
 
   def self.usage
-    File.open(README).readlines.each { |line|
-      puts line.sub(/^# ?/, '') unless line =~ /#!/
+    File.open(README).readlines.select { |line| line !~ /^`/ }.each { |line|
+      puts line.gsub(/`|^#+ |^--/, '').sub('Command flag  ', 'Command flag')
     }
     throw :exit
   end
@@ -287,7 +288,7 @@ class Doc
   def self.short_usage(msg)
     $stderr << msg << "\n\n" <<
       # Extract usage information (synopsis) from README file.
-      IO.read(README)[%r"Usage.*?(?=-[^h]:)"m] << "\n"
+      IO.read(README)[%r"Usage.*?(?=^\S)"m] << "\n"
     throw :exit
   end
 end
