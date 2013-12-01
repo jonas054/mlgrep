@@ -1,6 +1,8 @@
 require_relative '../lib/fsm'
 require 'test/unit'
 
+# rubocop:disable Semicolon
+
 class TestFSM < Test::Unit::TestCase
     def setup
         $output = []
@@ -10,8 +12,8 @@ class TestFSM < Test::Unit::TestCase
         }
 
         $fsm = FSM.new(:init) { |ev, old, new|
-            $output << (old.to_s[0,1].upcase + "-(#{ev})->" +
-                        new.to_s[0,1].upcase)
+            $output << (old.to_s[0, 1].upcase + "-(#{ev})->" +
+                        new.to_s[0, 1].upcase)
         }
         $fsm.add(:init,    'start',  :started)
         $fsm.add(:started, /^[A-Z][a-z]+/) { |ev,| $fsm.act; name = ev }
@@ -23,7 +25,7 @@ class TestFSM < Test::Unit::TestCase
     end
 
     def test_normal
-        $fsm.run ['start', 'Bob', 'run']
+        $fsm.run %w'start Bob run'
         $fsm.run [33, 37]
         assert_equal 'I-(start)->S, S-(Bob)->S, S-(run)->R, R-(33)->R, ' +
             "R-(37)->E, [BOB]", $output.join(', ')
@@ -31,8 +33,8 @@ class TestFSM < Test::Unit::TestCase
     end
 
     def test_error
-        assert_equal 'Event "x" in state :init',
-            assert_raise(RuntimeError) { $fsm.run ['x'] }.message
+        assert_equal('Event "x" in state :init',
+                     assert_raise(RuntimeError) { $fsm.run ['x'] }.message)
     end
 
     def test_no_default_action

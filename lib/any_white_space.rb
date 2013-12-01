@@ -15,13 +15,13 @@ class Regexp
         result = ''
         fsm = FSM.new(:normal) { |char,| result << char }
 
-        fsm.add(:normal,          %r' ', :normal) { result << '\s*' }
-        fsm.add :normal,          '\\',  :escape_normal
-        fsm.add :escape_normal,   /./,   :normal
-        fsm.add :normal,          '[',   :brackets
-        fsm.add :brackets,        ']',   :normal
-        fsm.add :brackets,        '\\',  :escape_brackets
-        fsm.add :escape_brackets, /./,   :brackets
+        fsm.add(:normal,          / /,  :normal) { result << '\s*' }
+        fsm.add :normal,          '\\', :escape_normal
+        fsm.add :escape_normal,   /./,  :normal
+        fsm.add :normal,          '[',  :brackets
+        fsm.add :brackets,        ']',  :normal
+        fsm.add :brackets,        '\\', :escape_brackets
+        fsm.add :escape_brackets, /./,  :brackets
         fsm.add :ANY,             /./
 
         fsm.run source.scan(/ +|\w+|./)
@@ -29,5 +29,5 @@ class Regexp
         @@aws_cache[key] = Regexp.new result, options
     end
 
-    alias any_white_space aws
+    alias_method :any_white_space, :aws
 end

@@ -4,6 +4,8 @@ require 'test/unit'
 require 'stringio'
 require 'fileutils'
 
+# rubocop:disable Syntax, WordArray
+
 class TestOutput < Test::Unit::TestCase
   def setup
     $stdin  = StringIO.new
@@ -43,7 +45,7 @@ class TestUsageErrors < TestOutput
   # With -X we say that we want to exclude files from the search based on the
   # 'exclude' property in .mlgrep.yml, but -X requires another flag such as -S
   # that states which files to search for in the first place.
-  def test_only_X_flag
+  def test_only_X_flag # rubocop:disable MethodName
     assert_equal 0, mlgrep(%w'-X class lib/fsm.rb')
     $stdout.string = ''
     check(Regexp.new('Exclusion flag .* but no pattern flag ' +
@@ -54,7 +56,7 @@ class TestUsageErrors < TestOutput
   # Just as the capital -X, the -x flag (which takes a regexp argument), is
   # meaningless without a pattern flag.
   def test_only_x_flag
-    check(%r"Exclusion flag .* but no pattern flag",
+    check(/Exclusion flag .* but no pattern flag/,
           '-x', '/test/', 'abc')
   end
 
@@ -72,7 +74,7 @@ class TestUsageErrors < TestOutput
   # Line mode (-n) works like the classic grep command, by searching for lines
   # that match a regexp. Then we can't have newline characters in the regexp.
   def test_newline_in_line_mode
-    check(%r"Don't use \\n in regexp when in line mode",
+    check(/Don't use \\n in regexp when in line mode/,
           '-n', 'class FSM\n', 'lib/fsm.rb')
   end
 
@@ -81,7 +83,7 @@ class TestUsageErrors < TestOutput
       f.puts 'junk:'
       f.puts '  nothing'
     }
-    check(%r"No line starting with source: found in mlgrep.yml",
+    check(/No line starting with source: found in mlgrep.yml/,
           '-f', 'mlgrep.yml', '-Sl', '.')
   ensure
     File.unlink 'mlgrep.yml'
@@ -161,18 +163,18 @@ class TestMlgrep < TestOutput
 
   def test_whole_word
     mlgrep *%w'-nN default lib/fsm.rb'
-    # Without the -w flag, we get a match on 'default' and 'defaultAction'.
+    # Without the -w flag, we get a match on 'default' and 'default_action'.
     lines =
       ["# the default action executed for all rules that don't have their own",
-       "def initialize(initialState, &defaultAction)",
-       "@state, @defaultAction = initialState, defaultAction",
+       "def initialize(initialState, &default_action)",
+       "@state, @default_action = initialState, default_action",
        "# Adds a state/event transition (a rule). If no block is given, the " +
        "default",
-       "action || @defaultAction || proc { }]",
+       "action || @default_action || proc {}]",
        "# Executes the default action. Typically used from within an action " +
        "when",
        "# you want to execute the default action plus something more.",
-       "@defaultAction.call @event, @state, @newState"]
+       "@default_action.call @event, @state, @new_state"]
     check_stdout(*lines)
 
     mlgrep *%w'-wnN default lib/fsm.rb'
@@ -221,36 +223,36 @@ class TestMlgrep < TestOutput
   end
 
   def test_line_mode
-    mlgrep *%w'withoutXmlComments lib/skip_stuff.rb'
-    check_stdout "lib/skip_stuff.rb:9: withoutXmlComments"
+    mlgrep *%w'without_xml_comments lib/skip_stuff.rb'
+    check_stdout "lib/skip_stuff.rb:12: without_xml_comments"
 
-    mlgrep *%w'-n withoutXmlComments lib/skip_stuff.rb'
-    check_stdout "lib/skip_stuff.rb:9: def withoutXmlComments"
+    mlgrep *%w'-n without_xml_comments lib/skip_stuff.rb'
+    check_stdout "lib/skip_stuff.rb:12: def without_xml_comments"
   end
 
   def test_source_flag
-    mlgrep *%w'-S -x test_ withoutXmlComments'
-    check_stdout("./lib/skip_stuff.rb:9: withoutXmlComments",
-                 %r"./lib/mlgrep.rb:\d+: withoutXmlComments")
+    mlgrep *%w'-S -x test_ without_xml_comments'
+    check_stdout("./lib/skip_stuff.rb:12: without_xml_comments",
+                 %r"./lib/mlgrep.rb:\d+: without_xml_comments")
   end
 
   def test_source_flag_with_explicit_directory
-    mlgrep *%w'-S -x test_ withoutXmlComments ./'
-    check_stdout("./lib/skip_stuff.rb:9: withoutXmlComments",
-                 %r"./lib/mlgrep.rb:\d+: withoutXmlComments")
+    mlgrep *%w'-S -x test_ without_xml_comments ./'
+    check_stdout("./lib/skip_stuff.rb:12: without_xml_comments",
+                 %r"./lib/mlgrep.rb:\d+: without_xml_comments")
   end
 
   def test_source_flag_when_rc_file_is_missing
-    mlgrep *%w'-f mlgrep.yml -S -x test_ withoutXmlComments'
-    check_stdout("./lib/skip_stuff.rb:9: withoutXmlComments",
-                 %r"./lib/mlgrep.rb:\d+: withoutXmlComments")
+    mlgrep *%w'-f mlgrep.yml -S -x test_ without_xml_comments'
+    check_stdout("./lib/skip_stuff.rb:12: without_xml_comments",
+                 %r"./lib/mlgrep.rb:\d+: without_xml_comments")
   ensure
     File.unlink 'mlgrep.yml'
   end
 
   def test_only_group_match
-    mlgrep *%w'-o without(X..)Comments lib/skip_stuff.rb'
-    check_stdout "lib/skip_stuff.rb:9: Xml"
+    mlgrep *%w'-o without_(x..)_comments lib/skip_stuff.rb'
+    check_stdout "lib/skip_stuff.rb:12: xml"
   end
 
   def test_statistics
@@ -335,8 +337,8 @@ class TestMlgrep < TestOutput
                  'lib/fsm.rb:83: <joning@home.se>',
                  'lib/fsm.rb:115: <tt>',
                  'lib/fsm.rb:115: </tt>',
-                 'lib/fsm.rb:124: << [state, event, newState, ',
-                 'lib/fsm.rb:138: << "#@event #@state->')
+                 'lib/fsm.rb:124: << [state, event, new_state, ',
+                 'lib/fsm.rb:138: << "#{@event} #{@state}->')
   end
 
   def test_bad_encoding
@@ -368,7 +370,7 @@ class TestMlgrep < TestOutput
   end
 
   def test_file_error
-    File.open_with_error_handling('lib/fsm.rb') { raise Errno::ENXIO, "Hej" }
+    File.open_with_error_handling('lib/fsm.rb') { fail Errno::ENXIO, "Hej" }
     check_stdout 'mlgrep: No such device or address - Hej'
   end
 

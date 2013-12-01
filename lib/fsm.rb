@@ -1,7 +1,7 @@
 class Proc
     # Case equality for a proc is defined as the result of calling the proc.
-    def ===(arg)
-        call arg
+    def ===(other)
+        call other
     end
 
     # :stopdoc:
@@ -16,7 +16,7 @@ class Proc
         obj
     end
 
-    alias old_inspect inspect
+    alias_method :old_inspect, :inspect
     def inspect
         @@fsm_name[self] or old_inspect
     end
@@ -54,8 +54,8 @@ end
 #   name = nil
 #   is_prime = proc { |n| not (2...n.to_i).find { |x| n % x == 0 } }
 #
-#   fsm = FSM.new(:init) { |event, oldState, newState|
-#       output << "#{oldState}-(#{event})->#{newState}"
+#   fsm = FSM.new(:init) { |event, oldState, new_state|
+#       output << "#{oldState}-(#{event})->#{new_state}"
 #   }
 #
 #   fsm.add(:init, 'start', :started)
@@ -100,10 +100,10 @@ class FSM
     #   new(initialState) { |event, old_state, new_state| ... }
     #   new(initialState)
     #
-    def initialize(initialState, &defaultAction)
-        @state, @defaultAction = initialState, defaultAction
+    def initialize(initialState, &default_action)
+        @state, @default_action = initialState, default_action
         @matrix = []
-        @newState = nil
+        @new_state = nil
     end
 
     # Creates an instance of the Either class. It takes two or more states as
@@ -111,18 +111,18 @@ class FSM
     def self.either(*args) Either.new(*args) end
 
     # Adds a state/event transition (a rule). If no block is given, the default
-    # action will be used. If no _newState_ is given, the FSM will remain in
+    # action will be used. If no _new_state_ is given, the FSM will remain in
     # the same state. You can use the value <tt>:ANY</tt> for _state_ or
     # _expectedEvent_. When the action is called, the arrays _peek_ahead_ and
     # _peek_back_ contain the events after and before the current one.
     #
     # :call-seq:
-    #   add(state, expectedEvent, newState = state) { |event, old_state, new_state, peek_ahead, peek_back| ... } 
-    #   add(state, expectedEvent, newState = state)
+    #   add(state, expectedEvent, new_state = state) { |event, old_state, new_state, peek_ahead, peek_back| ... }
+    #   add(state, expectedEvent, new_state = state)
     #
-    def add(state, event, newState = state, &action)
-        @matrix << [state, event, newState,
-                    action || @defaultAction || proc { }]
+    def add(state, event, new_state = state, &action)
+        @matrix << [state, event, new_state,
+                    action || @default_action || proc {}]
     end
 
     # Feeds the given array of actual events to the FSM, causing state
@@ -132,17 +132,17 @@ class FSM
     def run(events)
         events.each_with_index { |ev, ix|
             @event = ev
-            state, event, newState, action = @matrix.find { |s, e, |
+            state, _event, new_state, action = @matrix.find { |s, e, |
                 (s === @state or s == :ANY) and (e === @event or e == :ANY)
             }
-            $stderr << "#@event #@state->#{newState}\n" if $DEBUG
+            $stderr << "#{@event} #{@state}->#{new_state}\n" if $DEBUG
             unless state
-                raise "Event #{@event.inspect} in state #{@state.inspect}"
+                fail "Event #{@event.inspect} in state #{@state.inspect}"
             end
-            @newState = newState unless newState == :ANY || Either === newState
-            action.call(@event, @state, @newState, events[(ix + 1)..-1],
+            @new_state = new_state unless new_state == :ANY || Either === new_state
+            action.call(@event, @state, @new_state, events[(ix + 1)..-1],
                         events[0...ix])
-            @state = @newState if @newState
+            @state = @new_state if @new_state
         }
     end
 
@@ -151,13 +151,13 @@ class FSM
     def act
         # Note that we can't send peek_ahead/peek_back arguments here. That's
         # why they don't appear in the documentation for new/initialize.
-        @defaultAction.call @event, @state, @newState
+        @default_action.call @event, @state, @new_state
     end
 
     # Jumps to the given state, but remembers the current state so that it can
     # be restored later by a call to FSM#pop_state.
     def push_state(state)
-        @newState = nil
+        @new_state = nil
         @stack ||= []
         @stack.push @state
         @state = state
@@ -165,7 +165,7 @@ class FSM
 
     # Restores the state from the state stack created by FSM#push_state.
     def pop_state
-        @newState = nil
+        @new_state = nil
         @state = @stack.pop
     end
 
@@ -174,7 +174,7 @@ class FSM
     # won't show up in the graph created by FSM#write_graph. This goes for
     # FSM#push_state and FSM#pop_state too.
     def goto(state)
-        @newState = nil
+        @new_state = nil
         @state = state
     end
 

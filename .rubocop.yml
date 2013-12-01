@@ -1,0 +1,50 @@
+inherit_from: rubocop-todo.yml
+
+AndOr:
+  Enabled: false
+
+Blocks:
+  Enabled: false
+
+CaseEquality:
+  Enabled: false
+
+ClassVars:
+  Enabled: false
+
+CollectionMethods:
+  PreferredMethods:
+    reduce: 'inject'
+
+EmptyLineBetweenDefs:
+  AllowAdjacentOneLineDefs: true
+
+Encoding:
+  Enabled: false
+
+FavorSprintf:
+  Enabled: false
+
+HashSyntax:
+  Enabled: false
+
+Not:
+  Enabled: false
+
+PerlBackrefs:
+  Enabled: false
+
+RegexpLiteral:
+  Enabled: false
+
+SingleLineBlockParams:
+  Enabled: false
+
+SingleLineMethods:
+  Enabled: false
+
+SpaceAfterComma:
+  Enabled: false
+
+StringLiterals:
+  Enabled: false

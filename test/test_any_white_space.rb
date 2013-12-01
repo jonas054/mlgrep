@@ -1,4 +1,3 @@
-$:.unshift '.'
 require 'test/unit'
 require_relative '../lib/any_white_space'
 
