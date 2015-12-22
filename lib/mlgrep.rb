@@ -2,23 +2,27 @@
 
 require 'pathname'
 require 'yaml'
-require 'English'
 
-MLGREP_HOME = File.dirname File.dirname(Pathname.new(__FILE__).realpath)
+MLGREP_HOME = File.dirname(Pathname.new(__FILE__).realpath)
 
-require_relative 'any_white_space'
-require_relative 'skip_stuff' # String#without...{Comments|Strings}
+# Path for any_white_space.rb, skip_stuff.rb, and (indirectly) fsm.rb
+$:.unshift MLGREP_HOME
+
+require 'any_white_space'
+require 'skip_stuff' # String#without{Xml|Script|Python|Cpp}{Comments|Strings}
 
 LANGUAGES = {
+  '-W' => { glob: '{*,.*}' },
   '-P' => { glob: '*.py',                              hashbang: /python/i },
   '-R' => { glob: '{*.{rb,gemspec},Rakefile,Gemfile}', hashbang: /ruby/i   },
   '-L' => { glob: '*.{pl,PL,pm,pod,t}',                hashbang: /perl/i   },
   '-C' => { glob: '*.{cc,c,cpp}'                                           },
   '-H' => { glob: '*.{hh,h,hpp}'                                           },
   '-J' => { glob: '*.java'                                                 },
+  '-E' => { glob: '*.js'                     }, # E is for ECMAScript
   '-V' => { glob: '[0-9]*'                                                 },
   '-M' => { glob:
-    '{*.cmake,CMakeLists.txt,Makefile,Makefile.old,makefile,*.mak,*.mk}'   }
+    '{*.cmake,CMakeLists.txt,Makefile,Makefile.old,makefile,*.mak,*.mk,*.make}' }
 }
 
 def mlgrep(*args)
@@ -150,7 +154,7 @@ def parse_args(args)
 
     case args.shift
       # Files to include/exclude
-    when /^-[CHJLMPRV]$/ then patterns << LANGUAGES[$&][:glob]
+    when /^-[CEHJLMPRVW]$/ then patterns << LANGUAGES[$&][:glob]
     when '-S' then patterns << get_property('source', cfg_file)
     when '-r' then patterns << args.shift
     when '-f' then cfg_file = args.shift
@@ -249,7 +253,7 @@ def mlgrep_search_files(output, re, names, flags = {})
   names.each { |filename|
     begin
       text = IO.read filename
-    rescue Errno::ENOENT, Errno::EIO, Errno::ENXIO => e
+    rescue Errno::ENOENT, Errno::EIO, Errno::ENXIO, Errno::EACCES => e
       $stderr.puts "mlgrep: #{e}"
       next
     end
@@ -283,7 +287,7 @@ module Enumerable
 end
 
 class Doc
-  README = File.join MLGREP_HOME, "README.md"
+  README = File.join MLGREP_HOME, '..', "README.md"
 
   def self.usage
     File.open(README).readlines.select { |line| line !~ /^`/ }.each { |line|
