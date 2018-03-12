@@ -107,7 +107,7 @@ def search_recursively_by_patterns(parameters)
   dirs = ['.'] if dirs.empty?
   dirs.each { |dir|
     Find.find dir do |f|
-      Find.prune if f =~ /\.snapshot/ || f =~ /~$/ || f =~ /_flymake/
+      Find.prune if f =~ /\.(snapshot|svn)/ || f =~ /~$/ || f =~ /_flymake/
       Find.prune if parameters[:exclude_regexen].find { |re| f =~ re }
 
       if File.directory?(f) && !File.symlink?(f)
