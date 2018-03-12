@@ -21,6 +21,7 @@ LANGUAGES = {
   '-J' => { glob: '*.java'                                                 },
   '-E' => { glob: '*.js'                     }, # E is for ECMAScript
   '-V' => { glob: '[0-9]*'                                                 },
+  '-T' => { glob: '*.{html,htm,xhtml,xml,css}'                             },
   '-M' => { glob:
     '{*.cmake,CMakeLists.txt,Makefile,Makefile.old,makefile,*.mak,*.mk,*.make}' }
 }

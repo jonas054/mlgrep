@@ -32,6 +32,7 @@ Command flag    | Description
  `-P`           | equivalent to `-r '*.py'` (Python)
  `-R`           | equivalent to `-r '*.rb'` (Ruby)
  `-S`           | equivalent to `-r <'source' pattern defined in ~/.mlgreprc>`
+ `-T`           | equivalent to `-r '*.{html,htm,xhtml,xml,css}'`
  `-q[<len>]`    | quiet - output first <len> and last <len> characters, default is 20
  `-N`           | don't print file names and line numbers
 
