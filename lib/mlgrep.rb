@@ -331,7 +331,7 @@ class File
     if file? name and readable? name and not symlink? name and name !~ /~$/
       begin
         open(name) { |f| yield f }
-      rescue Errno::ENXIO => e
+      rescue EOFError, Errno::EACCES, Errno::ENXIO => e
         $stdout.puts "mlgrep: #{e}"
       end
     end
