@@ -131,6 +131,7 @@ SIMPLE_FLAGS = {
   '-g' => :ignore_errors,
   '-h' => :help,
   '-i' => :ignore_case,
+  '-j' => :intellij,
   '-k' => :statistics,
   '-l' => :list,
   '-n' => :line,
@@ -262,6 +263,10 @@ def mlgrep_search_files(output, re, names, flags = {})
     filename = filename.realpath if flags[:absolute_paths]
 
     text.multiline_grep filename, :strip, re, flags do |line_nr, match|
+      if flags[:intellij] and $anything_found
+        print "Press <RETURN> to continue"
+        $stdin.gets
+      end
       $anything_found = true
       if flags[:statistics]
         $match_statistics[match] += 1
@@ -276,6 +281,7 @@ def mlgrep_search_files(output, re, names, flags = {})
         output << "#{filename}:#{line_nr}: " unless flags[:no_line_nr]
         yield filename, line_nr, match if block_given?
         output << match << "\n"
+        system "idea #{filename}:#{line_nr}" if flags[:intellij]
       end
     end
   }
