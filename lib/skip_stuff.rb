@@ -55,5 +55,7 @@ class String
                 x
             end
         }.join
+    rescue
+        self
     end
 end

@@ -369,11 +369,13 @@ class String
               when /\.(properties|cfg|rb|sh|pm|pl|py|cmake|mak)$/,
                 /CMakeLists.txt/
                 without_script_comments
-              else if self =~ /\A#[!\s]/m
-                     without_script_comments
-                   else
-                     without_cpp_comments
-                   end
+              else
+                match = self =~ /\A#[!\s]/m rescue nil
+                if match
+                  without_script_comments
+                else
+                  without_cpp_comments
+                end
               end
     end
     if flags[:no_strings]
