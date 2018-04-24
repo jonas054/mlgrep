@@ -4,26 +4,27 @@
 Usage: mlgrep -h
        -h:  help
 
-       mlgrep [-i] [-c] [-s] [-n|-l] [-q[<len>]] [-{CHJLMPRS}|-r <pattern> ...] \
-              [-X] [-x <regexp> ...] [-e] [-w] [-o] [-a] [-N] <regexp> \
-              [<files ...>]
+       mlgrep [-{igjcsewoaN}] [-n|-l] [-q[<len>]] [-{CHJLMPRS}|-r <pattern> ...] \
+              [-X] [-x <regexp> ...] <regexp> [<files ...>]
 ```
 
 Command flag    | Description
 ----------------|------------------------------------------------------------
  `-a`           | use absolute pathnames in printouts of matches
- `-i`           | ignore case
- `-w`           | match whole words only
- `-e`           | exclude self, i.e. don't search in files whose name matches the regexp we're searching for
  `-c`           | no comments (don't search within C/C++/Java/Ruby comments)
- `-s`           | no strings (don't search within double quoted strings)
+ `-e`           | exclude self, i.e. don't search in files whose name matches the regexp we're searching for
+ `-g`           | ignore errors (file not found, encoding, etc)
+ `-i`           | ignore case
+ `-j`           | invoke IntelliJ IDEA and wait for user input between each match
  `-k`           | print statistics about occurrences of the regexp
+ `-l`           | list (just print names of files where a match was found)
  `-n`           | line mode (a dot (.) or \s in regexp doesn't match newline and the whole line where a match was found is printed)
  `-o`           | only match. If the regexp contains a group (a parenthesized expression), only text matching that group, rather than the entire regexp match, will be printed.
- `-l`           | list (just print names of files where a match was found)
+ `-r <pattern>` | search in files matching the pattern (e.g. -r "*.skel") The directory tree starting at current directory is searched.
+ `-s`           | no strings (don't search within double quoted strings)
+ `-w`           | match whole words only
  `-x <regexp>`  | exclude files whose names match the regexp
  `-X`           | exclude files according to 'exclude' property in ~/.mlgrep.yml
- `-r <pattern>` | search in files matching the pattern (e.g. -r "*.skel") The directory tree starting at current directory is searched.
  `-C`           | equivalent to `-r '*.{cc,c}'` (C, C++)
  `-H`           | equivalent to `-r '*.{hh,h}'` (C/C++ headers)
  `-J`           | equivalent to `-r '*.java'` (Java)
