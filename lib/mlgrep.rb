@@ -128,6 +128,7 @@ SIMPLE_FLAGS = {
   '-a' => :absolute_paths,
   '-c' => :no_comments,
   '-e' => :exclude_self,
+  '-g' => :ignore_errors,
   '-h' => :help,
   '-i' => :ignore_case,
   '-k' => :statistics,
@@ -353,8 +354,10 @@ class String
         encoding = $3
       end
     rescue ArgumentError => e
-      $stderr.puts "mlgrep: #{e} in #{file_name}"
-      return
+      unless flags[:ignore_errors]
+        $stderr.puts "mlgrep: #{e} in #{file_name}"
+        return
+      end
     end
 
     pre_process_text(flags, file_name)
@@ -397,7 +400,9 @@ class String
         end
         relpos = self[pos..-1] =~ re or break
       rescue ArgumentError
-        $stderr.puts "mlgrep: Warning: #{$ERROR_INFO} in #{file_name}"
+        unless flags[:ignore_errors]
+          $stderr.puts "mlgrep: Warning: #{$ERROR_INFO} in #{file_name}"
+        end
         break
       end
       line  = self[0..pos + relpos].count("\n") + 1
