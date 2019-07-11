@@ -256,7 +256,7 @@ def mlgrep_search_files(output, re, names, flags = {})
   names.each { |filename|
     begin
       text = IO.read filename
-    rescue Errno::ENOENT, Errno::EIO, Errno::ENXIO, Errno::EACCES => e
+    rescue Errno::ENOENT, Errno::EINVAL, Errno::EIO, Errno::ENXIO, Errno::EACCES => e
       $stderr.puts "mlgrep: #{e}"
       next
     end
@@ -354,10 +354,12 @@ class String
     'UTF' => 'UTF-8'
   }
 
+  RE = %r"^(#|/\*|//) (-\*- )?\b(en)?coding: ([\w-]+)"
+
   def multiline_grep(file_name, do_strip, re, flags, &block)
     begin
-      if self =~ %r"^\s*(#|/\*|//)[^a-zA-Z]*\b(en)?coding: ([\w-]+)"
-        encoding = $3
+      if self =~ RE
+        encoding = $4
       end
     rescue ArgumentError => e
       unless flags[:ignore_errors]
@@ -405,9 +407,9 @@ class String
           break unless self[pos..-1].valid_encoding?
         end
         relpos = self[pos..-1] =~ re or break
-      rescue ArgumentError
+      rescue ArgumentError => e
         unless flags[:ignore_errors]
-          $stderr.puts "mlgrep: Warning: #{$ERROR_INFO} in #{file_name}"
+          $stderr.puts "mlgrep: Warning: #{e} in #{file_name}"
         end
         break
       end

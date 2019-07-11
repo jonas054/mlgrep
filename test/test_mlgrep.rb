@@ -27,8 +27,8 @@ class TestOutput < Test::Unit::TestCase
   protected
 
   def check_stderr(expected)
-    assert_equal expected, $stderr.string
-    $stderr.string = ''
+    assert expected === $stderr.string
+    $stderr = StringIO.new
   end
 end
 
@@ -49,7 +49,7 @@ class TestUsageErrors < TestOutput
     assert_equal 0, mlgrep(%w'-X class lib/fsm.rb')
     $stdout.string = ''
     check(Regexp.new('Exclusion flag .* but no pattern flag ' +
-                     '\(-C,-H,-J,-L,-M,-P,-R,-V,-S,-r\) or file list'),
+                     '\(-C,-E,-H,-J,-L,-M,-P,-R,-T,-V,-W,-S,-r\) or file list'),
           '-X', 'abc')
   end
 
@@ -62,7 +62,7 @@ class TestUsageErrors < TestOutput
 
   # Flags that are not supported should be reported.
   def test_unknown_flag
-    check %r"Unknown flag:", '-g', 'abc', 'lib/fsm.rb'
+    check %r"Unknown flag:", '-y', 'abc', 'lib/fsm.rb'
   end
 
   # Test giving arguments in the wrong order. Flags must come before regular
@@ -193,6 +193,7 @@ class TestMlgrep < TestOutput
     mlgrep *%w'-R -l fsm'
     check_sorted_stdout("./test/test_mlgrep.rb",
                         "./lib/any_white_space.rb",
+                        "./lib/mlgrep.rb",
                         "./test/test_fsm.rb",
                         "./lib/fsm.rb")
 
@@ -200,6 +201,7 @@ class TestMlgrep < TestOutput
     mlgrep *%w'-Re -l fsm'
     check_sorted_stdout("./test/test_mlgrep.rb",
                         "./lib/any_white_space.rb",
+                        "./lib/mlgrep.rb",
                         "./test/test_fsm.rb")
   end
 
@@ -219,7 +221,7 @@ class TestMlgrep < TestOutput
     assert_equal 0, mlgrep(*%w'-r lib/fsm.rb \$\S+ non-existent/')
     check_sorted_stdout("./lib/fsm.rb:138: $DEBUG",
                         "./lib/fsm.rb:138: $stderr")
-    check_stderr "mlgrep: No such file or directory - non-existent/\n"
+    check_stderr /mlgrep: No such file or directory(.*)?- non-existent/u
   end
 
   def test_line_mode
@@ -345,9 +347,8 @@ class TestMlgrep < TestOutput
     name = "testfile.txt"
     File.open(name, "w") { |f| f.puts "# -*- coding: bogus-8 -*-" }
     if RUBY_VERSION !~ /1.8/
-      mlgrep '.', name
-      check_stderr("mlgrep: Warning: unknown encoding name - bogus-8 in " +
-                   "testfile.txt\n")
+      mlgrep '.*', name
+      check_stderr(/mlgrep: Warning: unknown encoding name - bogus-8/)
     end
   ensure
     File.unlink name
@@ -371,7 +372,7 @@ class TestMlgrep < TestOutput
 
   def test_file_error
     File.open_with_error_handling('lib/fsm.rb') { fail Errno::ENXIO, "Hej" }
-    check_stdout 'mlgrep: No such device or address - Hej'
+    check_stdout /mlgrep: No such device or address - Hej|mlgrep: Device not configured - Hej/
   end
 
   def test_skipping_python_strings
@@ -391,12 +392,13 @@ class TestMlgrep < TestOutput
     FileUtils.mkdir_p "tmp"
     check_tmp_file('tmp/tmp.rb',
                    ['fsm = 0'],
-                   ['-Rl', 'fsm', '..'],
-                   ["../mlgrep/test/test_mlgrep.rb",
-                    "../mlgrep/lib/any_white_space.rb",
-                    "../mlgrep/test/test_fsm.rb",
-                    "../mlgrep/lib/fsm.rb",
-                    "../mlgrep/tmp/tmp.rb",
+                   ['-Rl', 'fsm', '.'],
+                   ["./test/test_mlgrep.rb",
+                    "./lib/any_white_space.rb",
+                    "./lib/mlgrep.rb",
+                    "./test/test_fsm.rb",
+                    "./lib/fsm.rb",
+                    "./tmp/tmp.rb",
                     'tmp/tmp.rb'])
   ensure
     FileUtils.rm_rf "tmp"
@@ -411,6 +413,7 @@ class TestMlgrep < TestOutput
                    %w'-x coverage|\.git -lr * fsm .',
                    ["./test/test_mlgrep.rb",
                     "./lib/any_white_space.rb",
+                    "./lib/mlgrep.rb",
                     "./test/test_fsm.rb",
                     "./lib/fsm.rb",
                     "./tmp/tmp.rb",
