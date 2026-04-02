@@ -42,7 +42,7 @@ class TestFSM < Test::Unit::TestCase
         n = nil
         out = ''
         fsm.add(:init,  Float,   :float) { |ev,| n = ev  }
-        fsm.add(:init,  Fixnum,  :int)   { |ev,| n = ev  }
+        fsm.add(:init,  Integer, :int)   { |ev,| n = ev  }
         fsm.add(:float, 'FLOOR', :int)   { n = n.floor }
         fsm.add(:ANY,   'PRINT')         { out << "n = #{n}" }
         fsm.add(:ANY,   'RESET', :init)

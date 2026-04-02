@@ -11,7 +11,7 @@ class Proc
     @@fsm_name = {}
 
     def self.named(name, &block)
-        obj = lambda(&block)
+        obj = block
         @@fsm_name[obj] = "<#{name}>"
         obj
     end
