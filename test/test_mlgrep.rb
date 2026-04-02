@@ -46,7 +46,7 @@ class TestUsageErrors < TestOutput
   # 'exclude' property in .mlgrep.yml, but -X requires another flag such as -S
   # that states which files to search for in the first place.
   def test_only_X_flag # rubocop:disable MethodName
-    assert_equal 0, mlgrep(%w'-X class lib/fsm.rb')
+    assert_equal 0, mlgrep(*%w'-X class lib/fsm.rb')
     $stdout.string = ''
     check(Regexp.new('Exclusion flag .* but no pattern flag ' +
                      '\(-C,-E,-H,-J,-L,-M,-P,-R,-T,-V,-W,-S,-r\) or file list'),
@@ -234,20 +234,20 @@ class TestMlgrep < TestOutput
 
   def test_source_flag
     mlgrep *%w'-S -x test_ without_xml_comments'
-    check_stdout("./lib/skip_stuff.rb:12: without_xml_comments",
-                 %r"./lib/mlgrep.rb:\d+: without_xml_comments")
+    check_stdout(%r"./lib/mlgrep.rb:\d+: without_xml_comments",
+                 "./lib/skip_stuff.rb:12: without_xml_comments")
   end
 
   def test_source_flag_with_explicit_directory
     mlgrep *%w'-S -x test_ without_xml_comments ./'
-    check_stdout("./lib/skip_stuff.rb:12: without_xml_comments",
-                 %r"./lib/mlgrep.rb:\d+: without_xml_comments")
+    check_stdout(%r"./lib/mlgrep.rb:\d+: without_xml_comments",
+                 "./lib/skip_stuff.rb:12: without_xml_comments")
   end
 
   def test_source_flag_when_rc_file_is_missing
     mlgrep *%w'-f mlgrep.yml -S -x test_ without_xml_comments'
-    check_stdout("./lib/skip_stuff.rb:12: without_xml_comments",
-                 %r"./lib/mlgrep.rb:\d+: without_xml_comments")
+    check_stdout(%r"./lib/mlgrep.rb:\d+: without_xml_comments",
+                 "./lib/skip_stuff.rb:12: without_xml_comments")
   ensure
     File.unlink 'mlgrep.yml'
   end
